@@ -19,7 +19,8 @@ const tabMeta = {
 } as const;
 
 const themeOptions = [
-  { id: 'classic', name: '默认' },
+  { id: 'collectui', name: '柔雾' },
+  { id: 'classic', name: '经典暗色' },
   { id: 'netease', name: '网易云' },
   { id: 'apple', name: '苹果音乐' },
   { id: 'claude', name: 'Claude' },
@@ -34,13 +35,15 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<FuelRecord | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [theme, setTheme] = useState<ThemeId>('classic');
+  const [theme, setTheme] = useState<ThemeId>('collectui');
   const [showThemePicker, setShowThemePicker] = useState(false);
 
   useEffect(() => {
     setRecords(loadInitialData());
     const savedTheme = localStorage.getItem('fuel_monitor_theme') as ThemeId | null;
-    if (savedTheme && themeOptions.some(option => option.id === savedTheme)) {
+    if (savedTheme === 'classic') {
+      setTheme('collectui');
+    } else if (savedTheme && themeOptions.some(option => option.id === savedTheme)) {
       setTheme(savedTheme);
     }
     setIsLoaded(true);
@@ -123,7 +126,7 @@ export default function App() {
         <AnimatePresence mode="wait">
           {activeTab === 'overview' && (
             <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <OverviewTab records={records} onRecordClick={setSelectedRecord} />
+              <OverviewTab records={records} onRecordClick={setSelectedRecord} onGoAdd={() => setActiveTab('add')} onOpenHistory={() => setShowHistory(true)} />
             </motion.div>
           )}
           {activeTab === 'trend' && (
