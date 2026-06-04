@@ -1,182 +1,191 @@
 import { FuelRecord } from '../types';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area,
-  BarChart, Bar, Cell, ComposedChart 
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
+import { AlertTriangle, CheckCircle2, Gauge, Route, WalletCards, Zap } from 'lucide-react';
+import { calculateEnergyMetrics } from '../lib/metrics';
+import { cn } from '../lib/utils';
 
 interface Props {
   records: FuelRecord[];
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-[#1a1e2a] border border-white/10 p-2 rounded shadow-lg">
-        <p className="text-xs text-[#6b7a99] mb-1">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-sm font-medium" style={{ color: entry.color }}>
-            {entry.name}: {entry.value}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="bg-[#1a1e2a] border border-white/10 p-3 rounded-xl shadow-lg">
+      <p className="text-xs text-[#6b7a99] mb-1">{label}</p>
+      {payload.map((entry: any, index: number) => (
+        <p key={index} className="text-xs font-semibold" style={{ color: entry.color }}>
+          {entry.name}: {entry.value}
+        </p>
+      ))}
+    </div>
+  );
 };
 
 export function TrendTab({ records }: Props) {
-  if (records.length === 0) return <div className="p-4">无数据</div>;
+  if (records.length === 0) {
+    return <div className="p-4 text-[#6b7a99]">暂无数据</div>;
+  }
 
-  const validFuel = records.filter(r => r.actualFuelPer100 !== null);
-  const avgFuel = validFuel.length > 0 
-    ? validFuel.reduce((sum, r) => sum + r.actualFuelPer100!, 0) / validFuel.length 
-    : 0;
-  
-  const minFuelRecord = validFuel.length > 0 
-    ? validFuel.reduce((min, r) => r.actualFuelPer100! < min.actualFuelPer100! ? r : min) 
-    : null;
-    
-  const maxFuelRecord = validFuel.length > 0 
-    ? validFuel.reduce((max, r) => r.actualFuelPer100! > max.actualFuelPer100! ? r : max) 
-    : null;
+  const enriched = records.map((record, index) => {
+    const previous = index > 0 ? records[index - 1] : null;
+    const metrics = calculateEnergyMetrics(record, previous);
+    return {
+      ...record,
+      ...metrics,
+      shortDate: format(parseISO(record.date), 'MM-dd'),
+    };
+  });
 
-  const validCost = records.filter(r => r.costPerKm !== null);
+  const validFuel = enriched.filter(r => r.actualFuelPer100 !== null);
+  const avgFuel = validFuel.length > 0
+    ? validFuel.reduce((sum, r) => sum + (r.actualFuelPer100 ?? 0), 0) / validFuel.length
+    : null;
+  const validCost = enriched.filter(r => r.costPerKm !== null);
   const avgCostPerKm = validCost.length > 0
-    ? validCost.reduce((sum, r) => sum + r.costPerKm!, 0) / validCost.length
-    : 0;
+    ? validCost.reduce((sum, r) => sum + (r.costPerKm ?? 0), 0) / validCost.length
+    : null;
+  const latest = enriched[enriched.length - 1];
+  const invalidCount = enriched.filter(r => r.odoStatus === 'invalid').length;
+  const highCount = enriched.filter(r => r.odoStatus === 'high').length;
+  const avgDisplayError = enriched.filter(r => r.displayError !== null).length > 0
+    ? enriched.filter(r => r.displayError !== null).reduce((sum, r) => sum + (r.displayError ?? 0), 0) / enriched.filter(r => r.displayError !== null).length
+    : null;
 
-  const chartData = records.map(r => ({
-    ...r,
-    shortDate: format(parseISO(r.date), 'MM-dd')
-  }));
-
-  const chartDataWithKm = chartData.filter(r => r.drivenKm !== null);
-
-  const getBarColor = (cost: number) => {
-    if (cost < 250) return '#4fc3f7'; 
-    if (cost < 300) return '#f5a623';
-    return '#ff4757';
+  const getCostColor = (value: number) => {
+    if (value <= 0.45) return '#7a8775';
+    if (value <= 0.65) return '#c58b31';
+    return '#c44f42';
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 pb-24 overflow-x-hidden">
-      
-      {/* 1. 油耗趋势折线图 */}
-      <div className="bg-[#1a1e2a] card-glow rounded-xl p-4">
-        <h3 className="text-sm font-medium text-[#e8ecf4] mb-4 flex items-center">
-          <span className="w-1 h-3 bg-[#4fc3f7] rounded mr-2"></span>
-          油耗趋势 (L/100km)
-        </h3>
-        <div className="h-[220px] w-full">
+    <div className="trend-soft flex flex-col gap-4 p-4 pb-24 overflow-x-hidden">
+      <section className="grid grid-cols-2 gap-3">
+        <div className="insight-card col-span-2">
+          <div className="insight-icon"><Gauge size={18} /></div>
+          <div>
+            <span>全周期平均实际油耗</span>
+            <strong>{avgFuel !== null ? avgFuel.toFixed(2) : '--'} <small>L/100km</small></strong>
+          </div>
+        </div>
+        <div className="insight-card">
+          <div className="insight-icon"><WalletCards size={17} /></div>
+          <div>
+            <span>平均花费</span>
+            <strong>{avgCostPerKm !== null ? avgCostPerKm.toFixed(3) : '--'} <small>元/km</small></strong>
+          </div>
+        </div>
+        <div className="insight-card">
+          <div className="insight-icon"><Zap size={17} /></div>
+          <div>
+            <span>每公里油耗</span>
+            <strong>{latest.fuelPerKm !== null ? latest.fuelPerKm.toFixed(4) : '--'} <small>L/km</small></strong>
+          </div>
+        </div>
+      </section>
+
+      <section className="analysis-card">
+        <div className="analysis-title">
+          {invalidCount > 0 ? <AlertTriangle size={17} /> : <CheckCircle2 size={17} />}
+          <span>跳枪法闭环校验</span>
+        </div>
+        <div className="analysis-grid">
+          <div>
+            <span>高置信周期</span>
+            <strong>{highCount}</strong>
+          </div>
+          <div>
+            <span>异常周期</span>
+            <strong className={invalidCount > 0 ? 'text-[#ff4757]' : ''}>{invalidCount}</strong>
+          </div>
+          <div>
+            <span>最近 ODO 差值</span>
+            <strong>{latest.odoDiff !== null ? `${latest.odoDiff > 0 ? '+' : ''}${latest.odoDiff} km` : '--'}</strong>
+          </div>
+          <div>
+            <span>表显误差</span>
+            <strong>{avgDisplayError !== null ? `${avgDisplayError > 0 ? '+' : ''}${avgDisplayError.toFixed(2)}` : '--'}</strong>
+          </div>
+        </div>
+        <p>{latest.odoMessage}</p>
+      </section>
+
+      <section className="chart-card">
+        <div className="chart-head">
+          <span>油耗校准</span>
+          <small>实际 vs 表显</small>
+        </div>
+        <div className="h-[230px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis dataKey="shortDate" stroke="#6b7a99" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis stroke="#6b7a99" fontSize={10} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
+            <ComposedChart data={enriched} margin={{ top: 8, right: 0, left: -25, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(127,127,127,0.12)" vertical={false} />
+              <XAxis dataKey="shortDate" stroke="var(--app-muted)" fontSize={10} tickLine={false} axisLine={false} />
+              <YAxis stroke="var(--app-muted)" fontSize={10} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
               <Tooltip content={<CustomTooltip />} />
-              <Line type="monotone" dataKey="actualFuelPer100" name="实际油耗" stroke="#4fc3f7" strokeWidth={2} dot={{r: 3, fill: '#4fc3f7'}} connectNulls={false} />
-              <Line type="monotone" dataKey="dashboardFuelPer100" name="表显油耗" stroke="#f5a623" strokeWidth={2} strokeDasharray="4 4" dot={false} connectNulls={true} />
+              <Area type="monotone" dataKey="actualFuelPer100" name="实际油耗" stroke="var(--app-brand)" fill="var(--app-brand-soft)" strokeWidth={2} connectNulls={false} />
+              <Line type="monotone" dataKey="dashboardFuelPer100" name="表显油耗" stroke="var(--app-accent)" strokeWidth={2} strokeDasharray="4 4" dot={false} connectNulls />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </section>
 
-      {/* 2. 油价趋势 */}
-      <div className="bg-[#1a1e2a] card-glow rounded-xl p-4">
-        <h3 className="text-sm font-medium text-[#e8ecf4] mb-4 flex items-center">
-          <span className="w-1 h-3 bg-[#f5a623] rounded mr-2"></span>
-          油价趋势 (元/L)
-        </h3>
-        <div className="h-[220px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f5a623" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#f5a623" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis dataKey="shortDate" stroke="#6b7a99" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis stroke="#6b7a99" fontSize={10} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="pricePerLiter" name="单价" stroke="#f5a623" strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" />
-            </AreaChart>
-          </ResponsiveContainer>
+      <section className="chart-card">
+        <div className="chart-head">
+          <span>经济成本</span>
+          <small>每公里花费</small>
         </div>
-      </div>
-
-      {/* 3. 花费柱状图 */}
-      <div className="bg-[#1a1e2a] card-glow rounded-xl p-4">
-        <h3 className="text-sm font-medium text-[#e8ecf4] mb-4 flex items-center">
-          <span className="w-1 h-3 bg-[#ff4757] rounded mr-2"></span>
-          每次花费 (元)
-        </h3>
-        <div className="h-[220px] w-full">
+        <div className="h-[210px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 0, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis dataKey="shortDate" stroke="#6b7a99" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis stroke="#6b7a99" fontSize={10} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255,255,255,0.05)'}} />
-              <Bar dataKey="totalCost" name="总金额" radius={[4, 4, 0, 0]}>
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={getBarColor(entry.totalCost)} />
+            <BarChart data={enriched} margin={{ top: 8, right: 0, left: -24, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(127,127,127,0.12)" vertical={false} />
+              <XAxis dataKey="shortDate" stroke="var(--app-muted)" fontSize={10} tickLine={false} axisLine={false} />
+              <YAxis stroke="var(--app-muted)" fontSize={10} tickLine={false} axisLine={false} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(127,127,127,0.06)' }} />
+              <Bar dataKey="costPerKm" name="元/km" radius={[8, 8, 2, 2]}>
+                {enriched.map((entry, index) => (
+                  <Cell key={`cost-${index}`} fill={getCostColor(entry.costPerKm ?? 0)} />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
-      
-      {/* 4. 里程 vs 加油量 */}
-      <div className="bg-[#1a1e2a] card-glow rounded-xl p-4">
-        <h3 className="text-sm font-medium text-[#e8ecf4] mb-4 flex items-center">
-          <span className="w-1 h-3 bg-[#e8ecf4] rounded mr-2"></span>
-          行驶里程 vs 加油量
-        </h3>
-        <div className="h-[220px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartDataWithKm} margin={{ top: 5, right: 0, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis dataKey="shortDate" stroke="#6b7a99" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="left" stroke="#6b7a99" fontSize={10} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="right" orientation="right" stroke="#f5a623" fontSize={10} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255,255,255,0.05)'}} />
-              <Bar yAxisId="left" dataKey="drivenKm" name="里程(km)" fill="rgba(79, 195, 247, 0.5)" radius={[2, 2, 0, 0]} />
-              <Line yAxisId="right" type="monotone" dataKey="fuelLiters" name="油量(L)" stroke="#f5a623" strokeWidth={2} dot={{r: 3}} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      </section>
 
-      {/* 文字统计 */}
-      <div className="bg-[#1a1e2a] card-glow rounded-xl p-4 flex flex-col gap-3">
-        <div className="flex justify-between border-b border-white/5 pb-2">
-          <span className="text-[#6b7a99] text-sm">全周期平均实际油耗</span>
-          <span className="text-[#e8ecf4] font-medium font-display">{avgFuel.toFixed(2)} L/100km</span>
+      <section className="cycle-list">
+        <div className="chart-head">
+          <span>周期质量</span>
+          <small>最近记录</small>
         </div>
-        <div className="flex justify-between border-b border-white/5 pb-2">
-          <span className="text-[#6b7a99] text-sm">每公里平均花费</span>
-          <span className="text-[#e8ecf4] font-medium font-display">{avgCostPerKm.toFixed(2)} 元/km</span>
-        </div>
-        <div className="flex justify-between border-b border-white/5 pb-2">
-          <span className="text-[#6b7a99] text-sm">最省油一次</span>
-          <span className="text-green-400 font-medium text-sm flex gap-2">
-            <span>{minFuelRecord?.date || '-'}</span>
-            <span className="font-display">{minFuelRecord ? minFuelRecord.actualFuelPer100?.toFixed(2) : '-'}</span>
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-[#6b7a99] text-sm">最费油一次</span>
-          <span className="text-[#ff4757] font-medium text-sm flex gap-2">
-            <span>{maxFuelRecord?.date || '-'}</span>
-            <span className="font-display">{maxFuelRecord ? maxFuelRecord.actualFuelPer100?.toFixed(2) : '-'}</span>
-          </span>
-        </div>
-      </div>
-      
+        {enriched.slice().reverse().slice(0, 5).map(record => (
+          <div key={record.id} className="cycle-row">
+            <div className="cycle-icon"><Route size={15} /></div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-[#e8ecf4]">{record.date}</div>
+              <div className="text-[11px] text-[#6b7a99]">
+                {record.drivenKm ?? '--'} km · {record.actualFuelPer100 !== null ? `${record.actualFuelPer100.toFixed(2)} L/100km` : '缺少里程'}
+              </div>
+            </div>
+            <div className={cn('quality-pill', `quality-${record.odoStatus}`)}>
+              {record.odoStatus === 'high' ? '高' : record.odoStatus === 'invalid' ? '异常' : record.odoStatus === 'warn' ? '复核' : '缺失'}
+            </div>
+          </div>
+        ))}
+      </section>
     </div>
   );
 }

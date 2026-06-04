@@ -21,10 +21,6 @@ const tabMeta = {
 const themeOptions = [
   { id: 'collectui', name: '柔雾' },
   { id: 'classic', name: '经典暗色' },
-  { id: 'netease', name: '网易云' },
-  { id: 'apple', name: '苹果音乐' },
-  { id: 'claude', name: 'Claude' },
-  { id: 'cyberpunk', name: '赛博朋克' },
 ] as const;
 
 type ThemeId = typeof themeOptions[number]['id'];
@@ -126,7 +122,7 @@ export default function App() {
         <AnimatePresence mode="wait">
           {activeTab === 'overview' && (
             <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <OverviewTab records={records} onRecordClick={setSelectedRecord} onGoAdd={() => setActiveTab('add')} onOpenHistory={() => setShowHistory(true)} />
+              <OverviewTab records={records} onRecordClick={setSelectedRecord} onGoAdd={() => setActiveTab('add')} onGoTrend={() => setActiveTab('trend')} onOpenHistory={() => setShowHistory(true)} />
             </motion.div>
           )}
           {activeTab === 'trend' && (

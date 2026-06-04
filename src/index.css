@@ -141,6 +141,7 @@ body {
 
 .app-shell[data-theme="collectui"] .app-scroll {
   padding-inline: 6px;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 
 .app-header {
@@ -156,9 +157,9 @@ body {
 
 .app-shell[data-theme="collectui"] .app-bottom-nav {
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  height: 54px;
-  width: min(76vw, 18rem);
-  border-radius: 999px;
+  height: 66px;
+  width: min(92vw, 24rem);
+  border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.78) !important;
   box-shadow: 0 12px 34px rgba(38, 36, 32, 0.16);
   padding-bottom: 0;
@@ -169,11 +170,7 @@ body {
 }
 
 .app-shell[data-theme="collectui"] .app-nav-item {
-  padding-top: 8px;
-}
-
-.app-shell[data-theme="collectui"] .app-nav-item span {
-  display: none;
+  padding-top: 9px;
 }
 
 .theme-trigger {
@@ -508,6 +505,164 @@ body {
   padding: 8px 14px;
   font-size: 12px;
   font-weight: 700;
+}
+
+.insight-card,
+.analysis-card,
+.chart-card,
+.cycle-list {
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  box-shadow: 0 14px 30px rgba(42, 39, 35, 0.1);
+}
+
+.insight-card {
+  min-height: 92px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.insight-icon,
+.cycle-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(25, 24, 23, 0.06);
+  color: var(--app-muted);
+  flex: none;
+}
+
+.insight-card span,
+.analysis-grid span {
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.insight-card strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--app-text);
+}
+
+.insight-card small {
+  font-size: 10px;
+  color: var(--app-muted);
+  font-weight: 600;
+}
+
+.analysis-card {
+  padding: 16px;
+}
+
+.analysis-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--app-text);
+}
+
+.analysis-title svg {
+  color: var(--app-accent);
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.analysis-grid div {
+  min-width: 0;
+  border-radius: 14px;
+  background: rgba(25, 24, 23, 0.045);
+  padding: 10px 8px;
+}
+
+.analysis-grid strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 16px;
+  color: var(--app-text);
+}
+
+.analysis-card p {
+  margin-top: 12px;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.chart-card,
+.cycle-list {
+  padding: 14px;
+}
+
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.chart-head span {
+  color: var(--app-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.chart-head small {
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cycle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+}
+
+.cycle-row + .cycle-row {
+  border-top: 1px solid rgba(25, 24, 23, 0.055);
+}
+
+.quality-pill {
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.quality-high {
+  background: rgba(21, 128, 61, 0.1);
+  color: #15803d;
+}
+
+.quality-warn {
+  background: rgba(183, 121, 31, 0.12);
+  color: #a16207;
+}
+
+.quality-invalid {
+  background: rgba(196, 79, 66, 0.12);
+  color: var(--app-danger);
+}
+
+.quality-missing {
+  background: rgba(25, 24, 23, 0.06);
+  color: var(--app-muted);
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */

@@ -6,10 +6,11 @@ interface Props {
   records: FuelRecord[];
   onRecordClick: (record: FuelRecord) => void;
   onGoAdd: () => void;
+  onGoTrend: () => void;
   onOpenHistory: () => void;
 }
 
-export function OverviewTab({ records, onRecordClick, onGoAdd, onOpenHistory }: Props) {
+export function OverviewTab({ records, onRecordClick, onGoAdd, onGoTrend, onOpenHistory }: Props) {
   const totalCount = records.length;
   const totalLiters = records.reduce((sum, r) => sum + r.fuelLiters, 0);
   const totalCost = records.reduce((sum, r) => sum + r.totalCost, 0);
@@ -60,7 +61,7 @@ export function OverviewTab({ records, onRecordClick, onGoAdd, onOpenHistory }: 
         </button>
       </section>
 
-      <section className="balance-strip">
+      <button type="button" onClick={onGoTrend} className="balance-strip w-full text-left">
         <div className="flex items-center gap-2">
           <span>油耗概况</span>
           {latestRange !== null && latestRange <= 100 && (
@@ -68,10 +69,10 @@ export function OverviewTab({ records, onRecordClick, onGoAdd, onOpenHistory }: 
           )}
         </div>
         <div className="flex items-center gap-1.5 text-[#6b7a99]">
-          <span>{latest?.date ?? '暂无数据'}</span>
+          <span>历史分析</span>
           <ChevronRight size={14} />
         </div>
-      </section>
+      </button>
 
       <section className="grid grid-cols-2 gap-3">
         <div className="metric-card">

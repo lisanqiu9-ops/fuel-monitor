@@ -1,6 +1,7 @@
 import { FuelRecord } from '../types';
 import { ChevronLeft, Calendar, MapPin, Gauge, Clock, Activity, Navigation, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
+import { calculateEnergyMetrics, getPreviousRecord } from '../lib/metrics';
 
 interface Props {
   record: FuelRecord;
@@ -15,6 +16,7 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
   
   const actual = record.actualFuelPer100 || 0;
   const dash = record.dashboardFuelPer100 || 0;
+  const metrics = calculateEnergyMetrics(record, getPreviousRecord(allRecords, record));
 
   // Max scale for bars
   const maxScale = Math.max(actual, dash, avgFuel, 10);
@@ -67,6 +69,37 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
             <div className="bg-[#0d0f14] rounded-xl p-4 border border-white/5 flex flex-col col-span-2">
               <span className="text-[#6b7a99] text-xs mb-1">每公里花费</span>
               <span className="font-display text-2xl text-[#e8ecf4] tracking-wide">{record.costPerKm ? `¥${record.costPerKm}` : '--'}</span>
+            </div>
+          </div>
+
+          <div className="bg-[#0d0f14] rounded-xl p-5 border border-white/5 flex flex-col gap-4">
+            <h3 className="text-sm font-medium text-[#e8ecf4] flex items-center gap-2">
+              <Activity size={16} className="text-[#4fc3f7]" />
+              跳枪法闭环解算
+            </h3>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-[#6b7a99] text-xs mb-1">实际百公里油耗</div>
+                <div className="text-[#e8ecf4] font-display text-lg">{metrics.actualFuelPer100 !== null ? `${metrics.actualFuelPer100.toFixed(2)} L/100km` : '--'}</div>
+              </div>
+              <div>
+                <div className="text-[#6b7a99] text-xs mb-1">每公里花费</div>
+                <div className="text-[#e8ecf4] font-display text-lg">{metrics.costPerKm !== null ? `${metrics.costPerKm.toFixed(3)} 元/km` : '--'}</div>
+              </div>
+              <div>
+                <div className="text-[#6b7a99] text-xs mb-1">每公里油耗</div>
+                <div className="text-[#e8ecf4] font-display text-lg">{metrics.fuelPerKm !== null ? `${metrics.fuelPerKm.toFixed(4)} L/km` : '--'}</div>
+              </div>
+              <div>
+                <div className="text-[#6b7a99] text-xs mb-1">表显误差</div>
+                <div className="text-[#e8ecf4] font-display text-lg">{metrics.displayError !== null ? `${metrics.displayError > 0 ? '+' : ''}${metrics.displayError.toFixed(2)}` : '--'}</div>
+              </div>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/5 p-3 text-xs text-[#6b7a99] leading-relaxed">
+              {metrics.odoMessage}
+              {metrics.odoDiff !== null && (
+                <span className="block mt-1">ODO 差值：{metrics.odoDiff > 0 ? '+' : ''}{metrics.odoDiff} km</span>
+              )}
             </div>
           </div>
 
