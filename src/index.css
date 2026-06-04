@@ -36,16 +36,25 @@ body {
 }
 
 .app-scroll {
-  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   -webkit-overflow-scrolling: touch;
 }
 
+.app-header {
+  padding-top: calc(18px + env(safe-area-inset-top, 0px));
+  padding-bottom: 14px;
+}
+
 .app-bottom-nav {
-  height: calc(72px + env(safe-area-inset-bottom, 0px));
+  height: calc(58px + env(safe-area-inset-bottom, 0px));
   width: min(100vw, 28rem);
   transform: translateX(-50%);
+}
+
+.app-nav-item {
+  padding-top: 7px;
 }
 
 .pb-safe {
