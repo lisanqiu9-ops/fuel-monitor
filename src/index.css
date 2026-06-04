@@ -141,7 +141,7 @@ body {
 
 .app-shell[data-theme="collectui"] .app-scroll {
   padding-inline: 6px;
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
 }
 
 .app-header {
@@ -156,12 +156,12 @@ body {
 }
 
 .app-shell[data-theme="collectui"] .app-bottom-nav {
-  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  height: 66px;
-  width: min(92vw, 24rem);
-  border-radius: 24px;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  height: 60px;
+  width: min(88vw, 22rem);
+  border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.78) !important;
-  box-shadow: 0 12px 34px rgba(38, 36, 32, 0.16);
+  box-shadow: 0 10px 28px rgba(38, 36, 32, 0.14);
   padding-bottom: 0;
 }
 
@@ -170,7 +170,17 @@ body {
 }
 
 .app-shell[data-theme="collectui"] .app-nav-item {
-  padding-top: 9px;
+  padding-top: 7px;
+}
+
+.app-shell[data-theme="collectui"] .app-nav-item svg {
+  width: 22px;
+  height: 22px;
+}
+
+.app-shell[data-theme="collectui"] .app-nav-item span {
+  margin-top: 0;
+  font-size: 10px;
 }
 
 .theme-trigger {
@@ -314,6 +324,23 @@ body {
   box-shadow: 0 12px 28px rgba(42, 39, 35, 0.09);
 }
 
+.app-shell[data-theme="collectui"] .action-tile,
+.app-shell[data-theme="collectui"] .metric-card,
+.app-shell[data-theme="collectui"] .activity-card,
+.app-shell[data-theme="collectui"] .insight-card,
+.app-shell[data-theme="collectui"] .analysis-card,
+.app-shell[data-theme="collectui"] .chart-card,
+.app-shell[data-theme="collectui"] .cycle-list {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 12px 26px rgba(42, 39, 35, 0.085);
+  backdrop-filter: blur(18px);
+}
+
+.app-shell[data-theme="collectui"] .balance-strip {
+  background: rgba(224, 221, 214, 0.82);
+}
+
 .overview-soft {
   color: var(--app-text);
 }
@@ -325,8 +352,8 @@ body {
 .action-tile {
   min-height: 78px;
   border-radius: 15px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 10px 22px rgba(42, 39, 35, 0.08);
+  background: var(--app-card);
+  box-shadow: 0 10px 22px var(--app-shadow);
   color: var(--app-text);
   display: grid;
   place-items: center;
@@ -334,7 +361,7 @@ body {
   gap: 7px;
   font-size: 11px;
   font-weight: 700;
-  border: 1px solid rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--app-border);
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
@@ -351,7 +378,7 @@ body {
 .balance-strip {
   min-height: 44px;
   border-radius: 14px;
-  background: rgba(224, 221, 214, 0.82);
+  background: var(--app-surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -372,9 +399,9 @@ body {
 .metric-card {
   min-height: 108px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  box-shadow: 0 10px 24px rgba(42, 39, 35, 0.08);
+  background: var(--app-card);
+  border: 1px solid var(--app-border);
+  box-shadow: 0 10px 24px var(--app-shadow);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -386,7 +413,7 @@ body {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: rgba(25, 24, 23, 0.06);
+  background: var(--app-surface);
   color: var(--app-muted);
   margin-bottom: 12px;
 }
@@ -414,9 +441,9 @@ body {
 
 .activity-card {
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  box-shadow: 0 14px 30px rgba(42, 39, 35, 0.1);
+  background: var(--app-card);
+  border: 1px solid var(--app-border);
+  box-shadow: 0 14px 30px var(--app-shadow);
   overflow: hidden;
 }
 
@@ -452,11 +479,11 @@ body {
 }
 
 .activity-row + .activity-row {
-  border-top: 1px solid rgba(25, 24, 23, 0.055);
+  border-top: 1px solid var(--app-border);
 }
 
 .activity-row:active {
-  background: rgba(25, 24, 23, 0.04);
+  background: var(--app-surface);
 }
 
 .activity-avatar {
@@ -512,9 +539,9 @@ body {
 .chart-card,
 .cycle-list {
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  box-shadow: 0 14px 30px rgba(42, 39, 35, 0.1);
+  background: var(--app-card);
+  border: 1px solid var(--app-border);
+  box-shadow: 0 14px 30px var(--app-shadow);
 }
 
 .insight-card {
@@ -532,7 +559,7 @@ body {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: rgba(25, 24, 23, 0.06);
+  background: var(--app-surface);
   color: var(--app-muted);
   flex: none;
 }
@@ -585,7 +612,7 @@ body {
 .analysis-grid div {
   min-width: 0;
   border-radius: 14px;
-  background: rgba(25, 24, 23, 0.045);
+  background: var(--app-surface);
   padding: 10px 8px;
 }
 
@@ -635,7 +662,7 @@ body {
 }
 
 .cycle-row + .cycle-row {
-  border-top: 1px solid rgba(25, 24, 23, 0.055);
+  border-top: 1px solid var(--app-border);
 }
 
 .quality-pill {
@@ -661,7 +688,7 @@ body {
 }
 
 .quality-missing {
-  background: rgba(25, 24, 23, 0.06);
+  background: var(--app-surface);
   color: var(--app-muted);
 }
 

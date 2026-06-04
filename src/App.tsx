@@ -37,9 +37,7 @@ export default function App() {
   useEffect(() => {
     setRecords(loadInitialData());
     const savedTheme = localStorage.getItem('fuel_monitor_theme') as ThemeId | null;
-    if (savedTheme === 'classic') {
-      setTheme('collectui');
-    } else if (savedTheme && themeOptions.some(option => option.id === savedTheme)) {
+    if (savedTheme && themeOptions.some(option => option.id === savedTheme)) {
       setTheme(savedTheme);
     }
     setIsLoaded(true);
