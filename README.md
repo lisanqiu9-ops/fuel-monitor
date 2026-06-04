@@ -1,0 +1,94 @@
+# 油耗监控
+
+一个轻量的油耗记录小工具，支持手动录入、趋势统计、历史记录、JSON 备份导入/导出，以及可选的百度 OCR 小票识别。
+
+## 本地运行
+
+前置要求：安装 Node.js。
+
+```bash
+npm install
+npm run dev
+```
+
+打开终端提示的本地地址，默认通常是 `http://localhost:3000`。
+
+## 数据说明
+
+- 应用默认不内置任何个人加油记录。
+- 记录保存在当前浏览器的 `localStorage` 中。
+- 换电脑或手机后不会自动同步，需要在设置页导出 JSON，再到另一台设备导入。
+- `private-backups/` 是私有备份目录，已经加入 `.gitignore`，不要把这个目录分享或上传到 GitHub。
+
+## OCR 说明
+
+OCR 是可选功能。推荐把百度 OCR 的 API Key 和 Secret Key 放在 Cloudflare Worker 的环境变量里，前端只保存 Worker URL。
+
+Cloudflare Worker 需要配置这些变量：
+
+```text
+BAIDU_API_KEY=你的百度 API Key
+BAIDU_SECRET_KEY=你的百度 Secret Key
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,https://你的用户名.github.io
+OCR_ACCESS_TOKEN=可选访问令牌
+```
+
+如果设置了 `OCR_ACCESS_TOKEN`，需要在应用设置页里填写同一个访问令牌。这个令牌用于减少别人直接调用你的 Worker 消耗 OCR 额度的风险。
+
+## 部署到 GitHub Pages
+
+项目已经包含 GitHub Actions 工作流：`.github/workflows/deploy.yml`。
+
+推荐仓库名使用英文，例如：
+
+```text
+fuel-monitor
+```
+
+部署步骤：
+
+1. 在 GitHub 新建仓库。
+2. 把本项目代码上传到仓库的 `main` 分支。
+3. 进入仓库的 `Settings` - `Pages`。
+4. `Source` 选择 `GitHub Actions`。
+5. 等待 Actions 里的 `Deploy to GitHub Pages` 执行完成。
+
+如果仓库名是 `fuel-monitor`，部署地址通常类似：
+
+```text
+https://你的用户名.github.io/fuel-monitor/
+```
+
+如果仓库名是 `你的用户名.github.io`，部署地址通常是：
+
+```text
+https://你的用户名.github.io/
+```
+
+工作流会自动设置 Vite 的 `base` 路径，普通仓库和 `用户名.github.io` 仓库都能用。
+
+## 部署后 OCR 设置
+
+部署完成后，把 GitHub Pages 的来源域名加入 Cloudflare Worker 的 `ALLOWED_ORIGINS`。
+
+注意：`ALLOWED_ORIGINS` 填的是浏览器来源，只到域名为止，不包含后面的项目路径。比如页面地址是 `https://你的用户名.github.io/fuel-monitor/`，这里填写 `https://你的用户名.github.io`。
+
+例如：
+
+```text
+http://localhost:3000,http://localhost:3001,https://你的用户名.github.io/fuel-monitor
+```
+
+然后在油耗监控设置页填写：
+
+- Cloudflare Worker URL
+- 访问令牌，如果 Worker 设置了 `OCR_ACCESS_TOKEN`
+
+## 分享前检查
+
+```bash
+npm run lint
+npm run build
+```
+
+确认构建通过后，再分享项目源码或部署产物。分享时不要附带 `private-backups/`。

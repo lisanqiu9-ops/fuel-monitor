@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>油耗监控</title>
+    <meta name="theme-color" content="#f5a623" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Oswald:wght@400;500;700&display=swap" rel="stylesheet" />
+    <script>
+      const manifest = {
+        name: "油耗监控",
+        short_name: "油耗",
+        start_url: ".",
+        display: "standalone",
+        background_color: "#0d0f14",
+        theme_color: "#f5a623",
+        icons: [
+          {
+            src: "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22v-8c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v8"/><path d="M12 12v-6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v6"/><path d="M8 4h4"/><path d="M21 16v-2a4 4 0 0 0-4-4h-2"/></svg>'),
+            sizes: "192x192",
+            type: "image/svg+xml"
+          }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      const manifestURL = URL.createObjectURL(blob);
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = manifestURL;
+      document.head.appendChild(link);
+    </script>
+  </head>
+  <body class="bg-[#1a1a18] text-[#e8ecf4] antialiased select-none">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

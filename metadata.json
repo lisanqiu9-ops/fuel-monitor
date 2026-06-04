@@ -1,0 +1,5 @@
+{
+  "name": "油耗监控",
+  "description": "本地油耗记录、统计和备份工具",
+  "requestFramePermissions": ["camera"]
+}
