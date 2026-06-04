@@ -7,7 +7,7 @@ import { AddRecordTab } from './components/AddRecordTab';
 import { HistoryModal } from './components/HistoryModal';
 import { RecordDetailModal } from './components/RecordDetailModal';
 import { SettingsTab } from './components/SettingsTab';
-import { Droplet, BarChart2, PlusCircle, Settings } from 'lucide-react';
+import { Droplet, BarChart2, PlusCircle, Settings, Palette, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 
@@ -18,17 +18,37 @@ const tabMeta = {
   settings: { title: '设置', subtitle: '油耗监控' },
 } as const;
 
+const themeOptions = [
+  { id: 'classic', name: '默认' },
+  { id: 'netease', name: '网易云' },
+  { id: 'apple', name: '苹果音乐' },
+  { id: 'claude', name: 'Claude' },
+  { id: 'cyberpunk', name: '赛博朋克' },
+] as const;
+
+type ThemeId = typeof themeOptions[number]['id'];
+
 export default function App() {
   const [records, setRecords] = useState<FuelRecord[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'trend' | 'add' | 'settings'>('overview');
   const [showHistory, setShowHistory] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<FuelRecord | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [theme, setTheme] = useState<ThemeId>('classic');
+  const [showThemePicker, setShowThemePicker] = useState(false);
 
   useEffect(() => {
     setRecords(loadInitialData());
+    const savedTheme = localStorage.getItem('fuel_monitor_theme') as ThemeId | null;
+    if (savedTheme && themeOptions.some(option => option.id === savedTheme)) {
+      setTheme(savedTheme);
+    }
     setIsLoaded(true);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('fuel_monitor_theme', theme);
+  }, [theme]);
 
   const handleSave = (newRecord: FuelRecord) => {
     const newRecords = [...records, newRecord];
@@ -50,14 +70,52 @@ export default function App() {
   if (!isLoaded) return <div className="app-loading-shell bg-[#1a1a18]" />;
 
   return (
-    <div className="app-shell w-full flex flex-col bg-[#1a1a18] overflow-hidden max-w-md mx-auto relative shadow-2xl">
+    <div data-theme={theme} className="app-shell w-full flex flex-col bg-[#1a1a18] overflow-hidden max-w-md mx-auto relative shadow-2xl">
       
       {/* Header */}
-      <div className="app-header shrink-0 px-5">
-        <div className="text-xs font-medium text-[#6b7a99]">{currentTab.subtitle}</div>
-        <h1 className="mt-1 text-2xl font-medium text-[#e8ecf4] tracking-normal">
-          {currentTab.title}
-        </h1>
+      <div className="app-header shrink-0 px-5 flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs font-medium text-[#6b7a99]">{currentTab.subtitle}</div>
+          <h1 className="mt-1 text-2xl font-medium text-[#e8ecf4] tracking-normal">
+            {currentTab.title}
+          </h1>
+        </div>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowThemePicker(prev => !prev)}
+            className="theme-trigger mt-1 grid place-items-center rounded-full border border-white/10 bg-[#0d0f14] text-[#e8ecf4] active:bg-white/5"
+            aria-label="切换主题"
+          >
+            <Palette size={18} />
+          </button>
+          <AnimatePresence>
+            {showThemePicker && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.16 }}
+                className="theme-menu absolute right-0 top-12 z-50 w-40 overflow-hidden rounded-xl border border-white/10 bg-[#1a1e2a] shadow-2xl"
+              >
+                {themeOptions.map(option => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => {
+                      setTheme(option.id);
+                      setShowThemePicker(false);
+                    }}
+                    className="theme-menu-item flex w-full items-center justify-between px-3 py-2.5 text-left text-sm text-[#e8ecf4] active:bg-white/5"
+                  >
+                    <span>{option.name}</span>
+                    {theme === option.id && <Check size={15} className="text-[#f5a623]" />}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Main Content Area */}
