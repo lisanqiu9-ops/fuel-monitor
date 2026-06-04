@@ -32,6 +32,7 @@ export function AddRecordTab({ onSave, onOpenHistory, onGoSettings }: Props) {
   const [ocrErrorMsg, setOcrErrorMsg] = useState('');
   const [ocrResult, setOcrResult] = useState<{data: any, confidence: any} | null>(null);
   const [hasOcrConfig, setHasOcrConfig] = useState(false);
+  const [pendingOcrFiles, setPendingOcrFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -63,62 +64,68 @@ export function AddRecordTab({ onSave, onOpenHistory, onGoSettings }: Props) {
   const isOcrBusy = ocrStatus !== 'idle' && ocrStatus !== 'error';
   const ocrProgress = getOcrProgress();
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []) as File[];
+  const recognizeFiles = async (
+    files: File[],
+    options: { mode: 'initial' | 'more'; data?: any; confidence?: any }
+  ) => {
     if (files.length === 0) return;
-    
+
+    const isMore = options.mode === 'more';
+
     try {
-      setOcrStatus('compressing');
-      
-      let combinedData = null;
-      let combinedConfidence = null;
+      setOcrStatus(isMore ? 'recognizing_more' : 'compressing');
+
+      let combinedData = options.data ?? null;
+      let combinedConfidence = options.confidence ?? null;
 
       for (let i = 0; i < files.length; i++) {
-        setOcrStatus(files.length > 1 ? `recognizing_${i+1}_${files.length}` as any : 'recognizing');
+        if (isMore) {
+          setOcrStatus(files.length > 1 ? `recognizing_more_${i + 1}_${files.length}` : 'recognizing_more');
+        } else {
+          setOcrStatus(files.length > 1 ? `recognizing_${i + 1}_${files.length}` : 'recognizing');
+        }
+
         const base64 = await compressImage(files[i]);
         const rawData = await callBaiduOCR(base64);
-        
+
         const parsed = parseOCRData(rawData.words_result, { data: combinedData, confidence: combinedConfidence });
         combinedData = parsed.fields;
         combinedConfidence = parsed.confidence;
       }
-      
+
       setOcrResult({ data: combinedData, confidence: combinedConfidence });
       setOcrStatus('idle');
+      if (!isMore) setPendingOcrFiles([]);
     } catch (err: any) {
       setOcrStatus('error');
       setOcrErrorMsg(err.message);
     }
-    
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []) as File[];
+    if (files.length === 0) return;
+
+    setPendingOcrFiles(prev => [...prev, ...files]);
+    setOcrStatus('idle');
+    setOcrErrorMsg('');
+
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleStartOcr = () => {
+    recognizeFiles(pendingOcrFiles, { mode: 'initial' });
   };
 
   const handleAddMore = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []) as File[];
     if (files.length === 0) return;
-    
-    try {
-      setOcrStatus('recognizing_more');
-      
-      let combinedData = ocrResult?.data;
-      let combinedConfidence = ocrResult?.confidence;
 
-      for (let i = 0; i < files.length; i++) {
-        setOcrStatus(files.length > 1 ? `recognizing_more_${i+1}_${files.length}` : 'recognizing_more');
-        const base64 = await compressImage(files[i]);
-        const rawData = await callBaiduOCR(base64);
-        
-        const parsed = parseOCRData(rawData.words_result, { data: combinedData, confidence: combinedConfidence });
-        combinedData = parsed.fields;
-        combinedConfidence = parsed.confidence;
-      }
-      
-      setOcrResult({ data: combinedData, confidence: combinedConfidence });
-      setOcrStatus('idle');
-    } catch (err: any) {
-      setOcrStatus('error');
-      setOcrErrorMsg(err.message);
-    }
+    await recognizeFiles(files, {
+      mode: 'more',
+      data: ocrResult?.data,
+      confidence: ocrResult?.confidence,
+    });
     e.target.value = '';
   };
 
@@ -289,22 +296,54 @@ export function AddRecordTab({ onSave, onOpenHistory, onGoSettings }: Props) {
               </button>
             </div>
           ) : (
-            <div className="flex gap-3">
-              <button 
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={ocrStatus !== 'idle'}
-                className="flex-1 flex flex-col items-center justify-center gap-2 bg-[#0d0f14] border border-[#f5a623]/30 rounded-lg py-5 text-[#f5a623] active:bg-[#f5a623]/10 transition-colors disabled:opacity-50"
-              >
-                <Camera size={24} />
-                <span className="text-xs font-medium">拍照 / 选图</span>
-              </button>
-              <div className="flex-1 flex flex-col justify-center items-start px-2">
-                <p className="text-[10px] text-[#6b7a99] leading-relaxed mb-1 flex items-start gap-1">
-                  <ImageIcon size={10} className="mt-0.5 shrink-0" />
-                  支持多选！可选中控仪表盘和小票照片合并识别。
-                </p>
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={ocrStatus !== 'idle'}
+                  className="flex-1 flex flex-col items-center justify-center gap-2 bg-[#0d0f14] border border-[#f5a623]/30 rounded-lg py-5 text-[#f5a623] active:bg-[#f5a623]/10 transition-colors disabled:opacity-50"
+                >
+                  <Camera size={24} />
+                  <span className="text-xs font-medium">{pendingOcrFiles.length > 0 ? '继续添加照片' : '拍照 / 选图'}</span>
+                </button>
+                <div className="flex-1 flex flex-col justify-center items-start px-2">
+                  <p className="text-[10px] text-[#6b7a99] leading-relaxed mb-1 flex items-start gap-1">
+                    <ImageIcon size={10} className="mt-0.5 shrink-0" />
+                    先暂存照片，拍完小票和仪表盘后再统一识别。
+                  </p>
+                  {pendingOcrFiles.length > 0 && (
+                    <div className="text-[11px] text-[#4fc3f7] mt-1">
+                      已暂存 {pendingOcrFiles.length} 张
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {pendingOcrFiles.length > 0 && (
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <button
+                    type="button"
+                    onClick={handleStartOcr}
+                    disabled={ocrStatus !== 'idle'}
+                    className="bg-[#f5a623] text-black font-semibold rounded-lg py-3 text-sm active:bg-[#d48c1a] transition-colors disabled:opacity-50"
+                  >
+                    开始识别 {pendingOcrFiles.length} 张
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPendingOcrFiles([]);
+                      setOcrStatus('idle');
+                      setOcrErrorMsg('');
+                    }}
+                    disabled={ocrStatus !== 'idle'}
+                    className="px-4 py-3 rounded-lg bg-[#0d0f14] border border-white/10 text-[#6b7a99] text-sm active:bg-white/5 disabled:opacity-50"
+                  >
+                    清空
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
