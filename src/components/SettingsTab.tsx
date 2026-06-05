@@ -387,7 +387,7 @@ export function SettingsTab({ records, onRecordsChange }: Props) {
                   把下面代码部署到 Cloudflare Worker。部署后把 Worker URL 填到上方。
                 </p>
                 <div className="relative">
-                  <pre className="bg-[#0d0f14] p-3 rounded-lg text-[10px] overflow-x-auto text-[#e8ecf4]/70 border border-white/5">
+                  <pre className="worker-code-block p-3 rounded-lg text-[10px] overflow-x-auto border">
                     {WORKER_CODE}
                   </pre>
                   <button
