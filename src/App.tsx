@@ -55,6 +55,28 @@ export default function App() {
     localStorage.setItem('fuel_monitor_theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    let hideTimer: number | undefined;
+
+    const handleScroll = () => {
+      const shell = document.querySelector('.app-shell');
+      if (!shell) return;
+
+      shell.classList.add('is-scrolling');
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => {
+        shell.classList.remove('is-scrolling');
+      }, 900);
+    };
+
+    document.addEventListener('scroll', handleScroll, true);
+
+    return () => {
+      document.removeEventListener('scroll', handleScroll, true);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
+
   const handleSave = (newRecord: FuelRecord) => {
     const newRecords = [...records, newRecord];
     setRecords(saveRecords(newRecords));

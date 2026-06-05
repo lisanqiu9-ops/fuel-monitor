@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>油耗监控 - Product Design Options</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+      background: #f1f2f4;
+      color: #1b1b1b;
+    }
+    .page {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      font-weight: 760;
+    }
+    .intro {
+      margin: 0 0 22px;
+      color: #64676d;
+      font-size: 14px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(300px, 1fr));
+      gap: 22px;
+      align-items: start;
+    }
+    .option h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 760;
+    }
+    .phone {
+      width: 390px;
+      min-height: 844px;
+      max-width: 100%;
+      margin: 0;
+      overflow: hidden;
+      border-radius: 34px;
+      box-shadow: 0 20px 56px rgba(30, 32, 38, .18);
+      border: 1px solid rgba(0,0,0,.08);
+      position: relative;
+    }
+    .screen {
+      min-height: 844px;
+      padding: 24px 18px 88px;
+      position: relative;
+    }
+    .top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .eyebrow { font-size: 12px; font-weight: 650; opacity: .62; }
+    .title { margin-top: 3px; font-size: 27px; font-weight: 780; letter-spacing: 0; }
+    .icon-btn {
+      width: 40px; height: 40px; border-radius: 999px;
+      display: grid; place-items: center; border: 1px solid transparent;
+    }
+    .hero { margin: 8px 0 16px; }
+    .hero-label { font-size: 12px; font-weight: 700; opacity: .58; }
+    .money { font-size: 48px; font-weight: 820; letter-spacing: 0; line-height: 1.05; }
+    .sub { margin-top: 4px; font-size: 12px; opacity: .62; }
+    .actions { display: grid; grid-template-columns: 1.35fr 1fr; gap: 10px; margin: 18px 0 14px; }
+    .action-primary, .action-secondary, .tile, .strip, .list, .row, .capture, .metric {
+      border: 1px solid transparent;
+    }
+    .action-primary, .action-secondary {
+      min-height: 74px;
+      border-radius: 18px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 760;
+    }
+    .action-primary span, .action-secondary span { font-size: 11px; font-weight: 650; opacity: .68; }
+    .mini-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .tile { min-height: 76px; border-radius: 18px; padding: 13px; }
+    .tile label, .metric label { display: block; font-size: 11px; font-weight: 700; opacity: .58; }
+    .tile strong, .metric strong { display: block; margin-top: 8px; font-size: 22px; line-height: 1; }
+    .tile small, .metric small { font-size: 11px; opacity: .55; }
+    .strip {
+      min-height: 48px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      font-size: 13px;
+      font-weight: 760;
+      margin: 12px 0;
+    }
+    .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+    .metric { min-height: 102px; border-radius: 18px; padding: 14px; }
+    .list { border-radius: 20px; padding: 15px; margin-top: 12px; }
+    .list-head { display: flex; justify-content: space-between; font-size: 14px; font-weight: 760; margin-bottom: 10px; }
+    .row { display: flex; align-items: center; gap: 11px; padding: 12px 0; border-width: 1px 0 0 0; }
+    .row:first-of-type { border-top: 0; }
+    .avatar { width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; font-weight: 800; }
+    .grow { flex: 1; min-width: 0; }
+    .row-title { font-size: 13px; font-weight: 760; }
+    .row-sub { margin-top: 3px; font-size: 11px; opacity: .58; }
+    .pill { border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 780; white-space: nowrap; }
+    .nav {
+      position: absolute;
+      left: 22px; right: 22px; bottom: 18px;
+      height: 58px;
+      border-radius: 999px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      align-items: center;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 760;
+    }
+    .nav b { display: block; font-size: 18px; line-height: 1.1; margin-bottom: 2px; }
+    .capture { border-radius: 22px; padding: 16px; margin: 14px 0; }
+    .capture-title { display:flex; align-items:center; justify-content:space-between; font-size: 14px; font-weight: 780; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 14px; }
+    .step { border-radius: 12px; padding: 10px 7px; text-align: center; font-size: 11px; font-weight: 740; }
+    .bar { height: 8px; border-radius: 999px; overflow: hidden; margin-top: 12px; }
+    .bar div { height: 100%; width: 62%; border-radius: 999px; }
+
+    .mist .screen {
+      background:
+        radial-gradient(circle at 18% 0%, rgba(122,135,117,.34), transparent 27%),
+        radial-gradient(circle at 86% 0%, rgba(142,151,184,.28), transparent 25%),
+        linear-gradient(180deg, #f7f6f1 0%, #eeeae2 58%, #f5f3ef 100%);
+      color: #191817;
+    }
+    .mist .icon-btn, .mist .tile, .mist .metric, .mist .list {
+      background: rgba(255,255,255,.76);
+      border-color: rgba(255,255,255,.86);
+      box-shadow: 0 12px 26px rgba(42,39,35,.08);
+      backdrop-filter: blur(18px);
+    }
+    .mist .action-primary { background: #1f1e1b; color: #fff; }
+    .mist .action-secondary { background: rgba(255,255,255,.72); border-color: rgba(255,255,255,.86); }
+    .mist .strip { background: rgba(224,221,214,.82); }
+    .mist .row { border-color: rgba(25,24,23,.06); }
+    .mist .avatar { background: #ebe8df; color: #7a8775; }
+    .mist .pill { background: rgba(122,135,117,.14); color: #4e5e48; }
+    .mist .nav { background: rgba(255,255,255,.84); box-shadow: 0 12px 28px rgba(38,36,32,.14); }
+
+    .dash .screen {
+      background: linear-gradient(180deg, #11151c 0%, #151a22 55%, #101319 100%);
+      color: #eef3f7;
+    }
+    .dash .icon-btn, .dash .tile, .dash .metric, .dash .list, .dash .capture {
+      background: #1d2430;
+      border-color: rgba(255,255,255,.08);
+      box-shadow: 0 14px 30px rgba(0,0,0,.22);
+    }
+    .dash .action-primary { background: #69d0b3; color: #08120f; }
+    .dash .action-secondary { background: #222a36; border-color: rgba(255,255,255,.08); }
+    .dash .strip { background: #202835; color: #d9f7ec; }
+    .dash .row { border-color: rgba(255,255,255,.07); }
+    .dash .avatar { background: rgba(105,208,179,.16); color: #69d0b3; }
+    .dash .pill { background: rgba(105,208,179,.16); color: #94f0d4; }
+    .dash .nav { background: rgba(28,35,46,.94); border: 1px solid rgba(255,255,255,.08); }
+    .dash .bar { background: #10151d; }
+    .dash .bar div { background: #69d0b3; }
+    .dash .step { background: #151b24; color: #9faab8; }
+
+    .flow .screen {
+      background: #fafafa;
+      color: #171717;
+    }
+    .flow .top { margin-bottom: 14px; }
+    .flow .hero { background: #f0f7ff; border: 1px solid #dcebff; border-radius: 22px; padding: 18px; }
+    .flow .icon-btn, .flow .tile, .flow .metric, .flow .list, .flow .capture {
+      background: #fff;
+      border-color: #ececec;
+      box-shadow: 0 8px 20px rgba(22,26,32,.06);
+    }
+    .flow .action-primary { background: #176bff; color: #fff; }
+    .flow .action-secondary { background: #f4f4f5; color: #18181b; }
+    .flow .strip { background: #f4f4f5; }
+    .flow .row { border-color: #efefef; }
+    .flow .avatar { background: #eef4ff; color: #176bff; }
+    .flow .pill { background: #ecfdf3; color: #18794e; }
+    .flow .nav { background: #fff; border: 1px solid #ededed; box-shadow: 0 12px 30px rgba(22,26,32,.10); }
+    .flow .bar { background: #e9eef6; }
+    .flow .bar div { background: #176bff; }
+    .flow .step { background: #f5f7fb; color: #626b7a; }
+
+    @media (max-width: 1100px) {
+      .grid { grid-template-columns: 1fr; }
+      .phone { margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>油耗监控 - 3 个设计方向</h1>
+    <p class="intro">基于当前 React 源码和柔雾主题做的 Product Design 静态审查稿。选择一个方向后，可以继续落到代码。</p>
+    <section class="grid">
+      <article class="option mist">
+        <h2>1. 柔雾增强版：保留当前气质，强化识别入口</h2>
+        <div class="phone"><div class="screen">
+          <div class="top"><div><div class="eyebrow">油耗监控</div><div class="title">概览</div></div><div class="icon-btn">色</div></div>
+          <section class="hero"><div class="hero-label">累计油费</div><div class="money">¥2,418</div><div class="sub">12 次记录 · 416.8 L</div></section>
+          <section class="actions">
+            <div class="action-primary">拍照识别<span>小票 + 仪表盘，一次确认</span></div>
+            <div class="mini-actions"><div class="action-secondary">手动添加<span>录入</span></div><div class="action-secondary">历史<span>全部</span></div></div>
+          </section>
+          <div class="strip"><span>油耗概况</span><span>历史分析 ></span></div>
+          <section class="metrics"><div class="metric"><label>最近油耗</label><strong>6.42</strong><small>L/100km</small></div><div class="metric"><label>表显油耗</label><strong>6.10</strong><small>L/100km</small></div><div class="metric"><label>剩余续航</label><strong>318</strong><small>km</small></div><div class="metric"><label>平均油耗</label><strong>6.58</strong><small>L/100km</small></div></section>
+          <section class="list"><div class="list-head"><span>最近记录</span><span>全部 ></span></div><div class="row"><div class="avatar">油</div><div class="grow"><div class="row-title">92# 加油记录</div><div class="row-sub">2026-06-03 · 35.2 L</div></div><div class="pill">6.42</div></div><div class="row"><div class="avatar">油</div><div class="grow"><div class="row-title">92# 加油记录</div><div class="row-sub">2026-05-21 · 33.8 L</div></div><div class="pill">6.67</div></div></section>
+          <nav class="nav"><div><b>水</b>概览</div><div><b>图</b>趋势</div><div><b>加</b>记录</div><div><b>设</b>设置</div></nav>
+        </div></div>
+      </article>
+      <article class="option dash">
+        <h2>2. 驾驶仪表版：更工具化，数据读数更有力量</h2>
+        <div class="phone"><div class="screen">
+          <div class="top"><div><div class="eyebrow">今日车辆状态</div><div class="title">油耗仪表</div></div><div class="icon-btn">92</div></div>
+          <section class="capture"><div class="capture-title"><span>快速识别</span><span>上传照片</span></div><div class="steps"><div class="step">压缩</div><div class="step">OCR</div><div class="step">确认</div></div><div class="bar"><div></div></div></section>
+          <section class="hero"><div class="hero-label">本周期实际油耗</div><div class="money">6.42</div><div class="sub">L/100km · 比表显高 0.32</div></section>
+          <section class="metrics"><div class="metric"><label>本次花费</label><strong>¥286</strong><small>35.2 L</small></div><div class="metric"><label>每公里成本</label><strong>0.46</strong><small>元/km</small></div><div class="metric"><label>ODO 差值</label><strong>+1.2</strong><small>km</small></div><div class="metric"><label>剩余续航</label><strong>318</strong><small>km</small></div></section>
+          <section class="list"><div class="list-head"><span>复核队列</span><span>详情 ></span></div><div class="row"><div class="avatar">票</div><div class="grow"><div class="row-title">小票金额已匹配</div><div class="row-sub">35.2 L x 8.13 元/L</div></div><div class="pill">通过</div></div><div class="row"><div class="avatar">表</div><div class="grow"><div class="row-title">仪表盘数据待确认</div><div class="row-sub">均速、续航、ODO</div></div><div class="pill">核对</div></div></section>
+          <nav class="nav"><div><b>仪</b>概览</div><div><b>趋</b>趋势</div><div><b>记</b>记录</div><div><b>设</b>设置</div></nav>
+        </div></div>
+      </article>
+      <article class="option flow">
+        <h2>3. 小程序效率版：打开即操作，减少页面层级</h2>
+        <div class="phone"><div class="screen">
+          <div class="top"><div><div class="eyebrow">油耗监控</div><div class="title">本次加油</div></div><div class="icon-btn">...</div></div>
+          <section class="hero"><div class="hero-label">建议下一步</div><div class="money" style="font-size:34px">拍照识别小票</div><div class="sub">可继续补拍仪表盘，最后统一确认</div></section>
+          <section class="actions"><div class="action-primary">开始识别<span>相机 / 相册 / 多图</span></div><div class="action-secondary">手动添加<span>不使用 OCR</span></div></section>
+          <section class="capture"><div class="capture-title"><span>识别流程</span><span>0 张已选</span></div><div class="steps"><div class="step">1 选择照片</div><div class="step">2 识别合并</div><div class="step">3 确认保存</div></div></section>
+          <section class="metrics"><div class="metric"><label>最近油耗</label><strong>6.42</strong><small>L/100km</small></div><div class="metric"><label>上次加油</label><strong>06-03</strong><small>¥286</small></div></section>
+          <section class="list"><div class="list-head"><span>最近 3 条</span><span>全部记录 ></span></div><div class="row"><div class="avatar">92</div><div class="grow"><div class="row-title">92# · ¥286</div><div class="row-sub">2026-06-03 · 35.2 L</div></div><div class="pill">6.42</div></div><div class="row"><div class="avatar">92</div><div class="grow"><div class="row-title">92# · ¥274</div><div class="row-sub">2026-05-21 · 33.8 L</div></div><div class="pill">6.67</div></div></section>
+          <nav class="nav"><div><b>首</b>首页</div><div><b>图</b>趋势</div><div><b>加</b>记录</div><div><b>设</b>设置</div></nav>
+        </div></div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
