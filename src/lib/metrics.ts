@@ -29,7 +29,7 @@ export function calculateEnergyMetrics(record: FuelRecord, previous?: FuelRecord
   let odoStatus: OdoValidationStatus = 'missing';
   let odoMessage = '缺少连续 ODO 数据，无法校验里程闭环';
 
-  if (record.dashboardOdo !== null && previous?.dashboardOdo !== null && hasDistance) {
+  if (record.dashboardOdo !== null && previous && previous.dashboardOdo !== null && hasDistance) {
     odoDelta = round(record.dashboardOdo - previous.dashboardOdo, 1);
     odoDiff = round(odoDelta - record.drivenKm!, 1);
     const absDiff = Math.abs(odoDiff);
