@@ -33,6 +33,7 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [theme, setTheme] = useState<ThemeId>('collectui');
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [ocrLaunchRequest, setOcrLaunchRequest] = useState(0);
 
   useEffect(() => {
     setRecords(loadInitialData());
@@ -60,6 +61,11 @@ export default function App() {
 
   const handleReplaceRecords = (nextRecords: FuelRecord[]) => {
     setRecords(saveRecords(nextRecords));
+  };
+
+  const handleGoRecognize = () => {
+    setActiveTab('add');
+    setOcrLaunchRequest(prev => prev + 1);
   };
 
   const currentTab = tabMeta[activeTab];
@@ -120,7 +126,7 @@ export default function App() {
         <AnimatePresence mode="wait">
           {activeTab === 'overview' && (
             <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <OverviewTab records={records} onRecordClick={setSelectedRecord} onGoAdd={() => setActiveTab('add')} onGoTrend={() => setActiveTab('trend')} onOpenHistory={() => setShowHistory(true)} />
+              <OverviewTab records={records} onRecordClick={setSelectedRecord} onGoAdd={() => setActiveTab('add')} onGoRecognize={handleGoRecognize} onGoTrend={() => setActiveTab('trend')} onOpenHistory={() => setShowHistory(true)} />
             </motion.div>
           )}
           {activeTab === 'trend' && (
@@ -130,7 +136,7 @@ export default function App() {
           )}
           {activeTab === 'add' && (
             <motion.div key="add" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <AddRecordTab onSave={handleSave} onOpenHistory={() => setShowHistory(true)} onGoSettings={() => setActiveTab('settings')} />
+              <AddRecordTab onSave={handleSave} onOpenHistory={() => setShowHistory(true)} onGoSettings={() => setActiveTab('settings')} ocrLaunchRequest={ocrLaunchRequest} />
             </motion.div>
           )}
           {activeTab === 'settings' && (

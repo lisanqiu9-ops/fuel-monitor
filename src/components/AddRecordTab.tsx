@@ -11,9 +11,10 @@ interface Props {
   onSave: (record: FuelRecord) => void;
   onOpenHistory: () => void;
   onGoSettings: () => void;
+  ocrLaunchRequest?: number;
 }
 
-export function AddRecordTab({ onSave, onOpenHistory, onGoSettings }: Props) {
+export function AddRecordTab({ onSave, onOpenHistory, onGoSettings, ocrLaunchRequest = 0 }: Props) {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [fuelLiters, setFuelLiters] = useState('');
   const [pricePerLiter, setPricePerLiter] = useState('');
@@ -38,6 +39,12 @@ export function AddRecordTab({ onSave, onOpenHistory, onGoSettings }: Props) {
   useEffect(() => {
     checkOcrConfig().then(res => setHasOcrConfig(res));
   }, []);
+
+  useEffect(() => {
+    if (ocrLaunchRequest > 0) {
+      window.setTimeout(() => fileInputRef.current?.click(), 120);
+    }
+  }, [ocrLaunchRequest]);
 
   const getOcrProgress = () => {
     if (ocrStatus === 'idle' || ocrStatus === 'error') return 0;

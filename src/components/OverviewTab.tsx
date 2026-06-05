@@ -6,11 +6,12 @@ interface Props {
   records: FuelRecord[];
   onRecordClick: (record: FuelRecord) => void;
   onGoAdd: () => void;
+  onGoRecognize: () => void;
   onGoTrend: () => void;
   onOpenHistory: () => void;
 }
 
-export function OverviewTab({ records, onRecordClick, onGoAdd, onGoTrend, onOpenHistory }: Props) {
+export function OverviewTab({ records, onRecordClick, onGoAdd, onGoRecognize, onGoTrend, onOpenHistory }: Props) {
   const totalCount = records.length;
   const totalLiters = records.reduce((sum, r) => sum + r.fuelLiters, 0);
   const totalCost = records.reduce((sum, r) => sum + r.totalCost, 0);
@@ -51,7 +52,7 @@ export function OverviewTab({ records, onRecordClick, onGoAdd, onGoTrend, onOpen
           <PlusCircle size={17} />
           <span>添加</span>
         </button>
-        <button type="button" onClick={onGoAdd} className="action-tile">
+        <button type="button" onClick={onGoRecognize} className="action-tile">
           <Camera size={17} />
           <span>识别</span>
         </button>
