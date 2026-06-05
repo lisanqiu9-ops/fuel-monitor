@@ -12,9 +12,18 @@ interface Props {
   onOpenHistory: () => void;
   onGoSettings: () => void;
   ocrLaunchRequest?: number;
+  ocrPrefillData?: any;
+  ocrPrefillRequest?: number;
 }
 
-export function AddRecordTab({ onSave, onOpenHistory, onGoSettings, ocrLaunchRequest = 0 }: Props) {
+export function AddRecordTab({
+  onSave,
+  onOpenHistory,
+  onGoSettings,
+  ocrLaunchRequest = 0,
+  ocrPrefillData,
+  ocrPrefillRequest = 0,
+}: Props) {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [fuelLiters, setFuelLiters] = useState('');
   const [pricePerLiter, setPricePerLiter] = useState('');
@@ -45,6 +54,12 @@ export function AddRecordTab({ onSave, onOpenHistory, onGoSettings, ocrLaunchReq
       window.setTimeout(() => fileInputRef.current?.click(), 120);
     }
   }, [ocrLaunchRequest]);
+
+  useEffect(() => {
+    if (ocrPrefillRequest > 0 && ocrPrefillData) {
+      applyOcrData(ocrPrefillData);
+    }
+  }, [ocrPrefillRequest, ocrPrefillData]);
 
   const getOcrProgress = () => {
     if (ocrStatus === 'idle' || ocrStatus === 'error') return 0;
@@ -136,7 +151,7 @@ export function AddRecordTab({ onSave, onOpenHistory, onGoSettings, ocrLaunchReq
     e.target.value = '';
   };
 
-  const handleOcrConfirm = (data: any) => {
+  const applyOcrData = (data: any) => {
     if (data.date) setDate(data.date);
     if (data.fuelLiters) setFuelLiters(data.fuelLiters.toString());
     if (data.unitPrice) setPricePerLiter(data.unitPrice.toString());
@@ -149,6 +164,10 @@ export function AddRecordTab({ onSave, onOpenHistory, onGoSettings, ocrLaunchReq
     if (data.dashboardDriveHours) setDashboardDriveHours(data.dashboardDriveHours.toString());
     if (data.dashboardRange) setDashboardRange(data.dashboardRange.toString());
     if (data.dashboardOdo) setDashboardOdo(data.dashboardOdo.toString());
+  };
+
+  const handleOcrConfirm = (data: any) => {
+    applyOcrData(data);
     
     setOcrResult(null);
   };
