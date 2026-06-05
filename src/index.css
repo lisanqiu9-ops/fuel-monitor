@@ -341,6 +341,18 @@ body {
   background: rgba(224, 221, 214, 0.82);
 }
 
+.app-shell[data-theme="collectui"] .bg-\[\#f5a623\].text-black,
+.app-shell[data-theme="collectui"] .text-black.bg-\[\#f5a623\] {
+  background: #1f1e1b !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 22px rgba(31, 30, 27, 0.14) !important;
+}
+
+.app-shell[data-theme="collectui"] .bg-\[\#f5a623\].text-black:active,
+.app-shell[data-theme="collectui"] .text-black.bg-\[\#f5a623\]:active {
+  background: #34312d !important;
+}
+
 .overview-soft {
   color: var(--app-text);
 }
@@ -604,13 +616,14 @@ body {
 
 .analysis-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: 14px;
 }
 
 .analysis-grid div {
   min-width: 0;
+  min-height: 66px;
   border-radius: 14px;
   background: var(--app-surface);
   padding: 10px 8px;
@@ -620,6 +633,8 @@ body {
   display: block;
   margin-top: 5px;
   font-size: 16px;
+  line-height: 1.15;
+  white-space: nowrap;
   color: var(--app-text);
 }
 
