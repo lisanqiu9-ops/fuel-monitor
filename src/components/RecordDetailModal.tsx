@@ -1,5 +1,5 @@
 import { FuelRecord } from '../types';
-import { ChevronLeft, Calendar, MapPin, Gauge, Clock, Activity, Navigation, Zap } from 'lucide-react';
+import { Activity, Calendar, ChevronLeft, Clock, Fuel, Gauge, Navigation, Route, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { calculateEnergyMetrics, getPreviousRecord } from '../lib/metrics';
 
@@ -9,186 +9,167 @@ interface Props {
   onClose: () => void;
 }
 
+const formatMoney = (value: number | null | undefined, digits = 2) =>
+  value === null || value === undefined ? '--' : `¥${value.toFixed(digits)}`;
+
+const formatNumber = (value: number | null | undefined, suffix = '', digits?: number) => {
+  if (value === null || value === undefined) return '--';
+  const text = typeof digits === 'number' ? value.toFixed(digits) : String(value);
+  return `${text}${suffix}`;
+};
+
 export function RecordDetailModal({ record, allRecords, onClose }: Props) {
-  // calculate averages
-  const validFuel = allRecords.filter(r => r.actualFuelPer100 !== null);
-  const avgFuel = validFuel.length > 0 ? validFuel.reduce((acc, r) => acc + r.actualFuelPer100!, 0) / validFuel.length : 0;
-  
+  const validFuel = allRecords.filter((item) => item.actualFuelPer100 !== null);
+  const avgFuel = validFuel.length > 0
+    ? validFuel.reduce((acc, item) => acc + item.actualFuelPer100!, 0) / validFuel.length
+    : 0;
+
   const actual = record.actualFuelPer100 || 0;
   const dash = record.dashboardFuelPer100 || 0;
   const metrics = calculateEnergyMetrics(record, getPreviousRecord(allRecords, record));
-
-  // Max scale for bars
   const maxScale = Math.max(actual, dash, avgFuel, 10);
+  const getPercent = (value: number) => `${Math.min((value / maxScale) * 100, 100)}%`;
 
-  const getPercent = (val: number) => `${Math.min((val / maxScale) * 100, 100)}%`;
+  const stats = [
+    { label: '加油量', value: formatNumber(record.fuelLiters, ' L') },
+    { label: '总价', value: formatMoney(record.totalCost, 0) },
+    { label: '单价', value: `${formatMoney(record.pricePerLiter, 2)}/L` },
+    { label: '油号', value: record.fuelType || '--' },
+  ];
+
+  const dashboardStats = [
+    { icon: Route, label: '行驶里程', value: formatNumber(record.drivenKm, ' km') },
+    { icon: Zap, label: '均速', value: formatNumber(record.dashboardAvgSpeed, ' km/h') },
+    { icon: Clock, label: '行驶时间', value: record.dashboardDriveHours ? `${record.dashboardDriveHours} h` : '--' },
+    { icon: Navigation, label: '剩余续航', value: formatNumber(record.dashboardRange, ' km') },
+    { icon: Gauge, label: '总里程 ODO', value: formatNumber(record.dashboardOdo, ' km') },
+  ];
 
   return (
     <motion.div
-      initial={{ x: '100%' }}
-      animate={{ x: 0 }}
-      exit={{ x: '100%' }}
-      transition={{ type: "spring", damping: 26, stiffness: 260 }}
-      className="absolute inset-0 bg-[#1a1a18] z-50 flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.3)]"
+      initial={{ y: 18, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 18, opacity: 0 }}
+      transition={{ duration: 0.22 }}
+      className="record-detail-page absolute inset-0 z-50 flex flex-col"
     >
-      {/* Header */}
-      <div className="flex justify-between items-center px-3 py-3 border-b border-white/5 bg-[#1a1a18]/90 backdrop-blur-xl shrink-0 pt-safe z-10">
-        <button onClick={onClose} className="flex items-center text-[#6b7a99] active:text-[#e8ecf4] transition-colors p-2 z-10 -ml-2">
-          <ChevronLeft size={24} />
-          <span className="text-sm font-medium">返回</span>
+      <div className="record-detail-header shrink-0 px-5 pt-safe">
+        <button type="button" onClick={onClose} className="soft-back-button" aria-label="返回">
+          <ChevronLeft size={22} />
         </button>
-        <h2 className="text-[#e8ecf4] font-medium absolute left-1/2 -translate-x-1/2">加油详情</h2>
-        <div className="w-[60px]" />
+        <div className="min-w-0 flex-1 text-center">
+          <div className="text-[11px] font-semibold text-[#9b978f]">加油记录</div>
+          <h2 className="mt-0.5 text-lg font-semibold text-[#191817]">详情</h2>
+        </div>
+        <div className="w-10" />
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-safe">
-        <div className="p-5 flex flex-col gap-5">
-          <div className="flex items-center gap-2 text-[#e8ecf4]">
-            <Calendar className="text-[#6b7a99]" size={18} />
-            <span className="font-medium text-sm">{record.date}</span>
-          </div>
-          
-          {/* Main Visuals: Cards */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#0d0f14] rounded-xl p-4 border border-white/5 flex flex-col">
-              <span className="text-[#6b7a99] text-xs mb-1">加油量 (L)</span>
-              <span className="font-display text-2xl text-[#e8ecf4] tracking-wide">{record.fuelLiters}</span>
-            </div>
-            <div className="bg-[#0d0f14] rounded-xl p-4 border border-white/5 flex flex-col">
-              <span className="text-[#6b7a99] text-xs mb-1">总价 (元)</span>
-              <span className="font-display text-2xl text-[#f5a623] tracking-wide">¥{record.totalCost}</span>
-            </div>
-            <div className="bg-[#0d0f14] rounded-xl p-4 border border-white/5 flex flex-col">
-              <span className="text-[#6b7a99] text-xs mb-1">单价 (元/L)</span>
-              <span className="font-display text-2xl text-[#e8ecf4] tracking-wide">¥{record.pricePerLiter}</span>
-            </div>
-            <div className="bg-[#0d0f14] rounded-xl p-4 border border-white/5 flex flex-col">
-              <span className="text-[#6b7a99] text-xs mb-1">油号</span>
-              <span className="font-display text-xl mt-1 text-[#e8ecf4] tracking-wide">{record.fuelType || '--'}</span>
-            </div>
-            <div className="bg-[#0d0f14] rounded-xl p-4 border border-white/5 flex flex-col col-span-2">
-              <span className="text-[#6b7a99] text-xs mb-1">每公里花费</span>
-              <span className="font-display text-2xl text-[#e8ecf4] tracking-wide">{record.costPerKm ? `¥${record.costPerKm}` : '--'}</span>
-            </div>
-          </div>
+      <div className="record-detail-scroll flex-1 overflow-y-auto px-5 pb-[calc(28px+env(safe-area-inset-bottom,0px))]">
+        <section className="detail-date-row">
+          <Calendar size={18} />
+          <span>{record.date}</span>
+        </section>
 
-          <div className="bg-[#0d0f14] rounded-xl p-5 border border-white/5 flex flex-col gap-4">
-            <h3 className="text-sm font-medium text-[#e8ecf4] flex items-center gap-2">
-              <Activity size={16} className="text-[#4fc3f7]" />
-              跳枪法闭环解算
-            </h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <div className="text-[#6b7a99] text-xs mb-1">实际百公里油耗</div>
-                <div className="text-[#e8ecf4] font-display text-lg">{metrics.actualFuelPer100 !== null ? `${metrics.actualFuelPer100.toFixed(2)} L/100km` : '--'}</div>
-              </div>
-              <div>
-                <div className="text-[#6b7a99] text-xs mb-1">每公里花费</div>
-                <div className="text-[#e8ecf4] font-display text-lg">{metrics.costPerKm !== null ? `${metrics.costPerKm.toFixed(3)} 元/km` : '--'}</div>
-              </div>
-              <div>
-                <div className="text-[#6b7a99] text-xs mb-1">每公里油耗</div>
-                <div className="text-[#e8ecf4] font-display text-lg">{metrics.fuelPerKm !== null ? `${metrics.fuelPerKm.toFixed(4)} L/km` : '--'}</div>
-              </div>
-              <div>
-                <div className="text-[#6b7a99] text-xs mb-1">表显误差</div>
-                <div className="text-[#e8ecf4] font-display text-lg">{metrics.displayError !== null ? `${metrics.displayError > 0 ? '+' : ''}${metrics.displayError.toFixed(2)}` : '--'}</div>
-              </div>
+        <section className="detail-stat-grid">
+          {stats.map((item) => (
+            <div key={item.label} className="detail-stat-card">
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
             </div>
-            <div className="rounded-lg bg-white/5 border border-white/5 p-3 text-xs text-[#6b7a99] leading-relaxed">
-              {metrics.odoMessage}
-              {metrics.odoDiff !== null && (
-                <span className="block mt-1">ODO 差值：{metrics.odoDiff > 0 ? '+' : ''}{metrics.odoDiff} km</span>
-              )}
+          ))}
+          <div className="detail-stat-card col-span-2">
+            <span>每公里花费</span>
+            <strong>{metrics.costPerKm !== null ? `${metrics.costPerKm.toFixed(3)} 元/km` : '--'}</strong>
+          </div>
+        </section>
+
+        <section className="detail-card">
+          <div className="detail-card-title">
+            <Activity size={18} />
+            <span>跳枪法闭环解算</span>
+          </div>
+          <div className="detail-metric-grid">
+            <div>
+              <span>实际百公里油耗</span>
+              <strong>{formatNumber(metrics.actualFuelPer100, ' L/100km', 2)}</strong>
+            </div>
+            <div>
+              <span>每公里花费</span>
+              <strong>{metrics.costPerKm !== null ? `${metrics.costPerKm.toFixed(3)} 元/km` : '--'}</strong>
+            </div>
+            <div>
+              <span>每公里油耗</span>
+              <strong>{formatNumber(metrics.fuelPerKm, ' L/km', 4)}</strong>
+            </div>
+            <div>
+              <span>表显误差</span>
+              <strong>{metrics.displayError !== null ? `${metrics.displayError > 0 ? '+' : ''}${metrics.displayError.toFixed(2)}` : '--'}</strong>
             </div>
           </div>
-
-          {/* Graphical Comparison */}
-          {(actual > 0 || dash > 0) && (
-            <div className="bg-[#0d0f14] rounded-xl p-5 border border-white/5 flex flex-col gap-5">
-              <h3 className="text-sm font-medium text-[#e8ecf4] flex items-center gap-2 mb-1">
-                <Activity size={16} className="text-[#4fc3f7]" />
-                油耗对比分析
-              </h3>
-              
-              {actual > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#6b7a99]">实测油耗</span>
-                    <span className="font-display text-[#e8ecf4] text-sm tracking-wide">{actual.toFixed(2)} <span className="text-[10px] font-sans text-[#6b7a99]">L/100km</span></span>
-                  </div>
-                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                    <motion.div initial={{ width: 0 }} animate={{ width: getPercent(actual) }} transition={{ delay: 0.1, duration: 0.5 }} className="h-full bg-[#f5a623] rounded-full" />
-                  </div>
-                </div>
-              )}
-              
-              {dash > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#6b7a99]">表显油耗</span>
-                    <span className="font-display text-[#e8ecf4] text-sm tracking-wide">{dash.toFixed(2)} <span className="text-[10px] font-sans text-[#6b7a99]">L/100km</span></span>
-                  </div>
-                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                    <motion.div initial={{ width: 0 }} animate={{ width: getPercent(dash) }} transition={{ delay: 0.2, duration: 0.5 }} className="h-full bg-[#4fc3f7] rounded-full" />
-                  </div>
-                </div>
-              )}
-
-              {avgFuel > 0 && (
-                <div className="flex flex-col gap-1.5 pt-2 mt-1 border-t border-white/5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#6b7a99]">全周期平均</span>
-                    <span className="font-display text-[#e8ecf4] text-sm tracking-wide">{avgFuel.toFixed(2)} <span className="text-[10px] font-sans text-[#6b7a99]">L/100km</span></span>
-                  </div>
-                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                    <motion.div initial={{ width: 0 }} animate={{ width: getPercent(avgFuel) }} transition={{ delay: 0.3, duration: 0.5 }} className="h-full bg-[#6b7a99] rounded-full" />
-                  </div>
-                </div>
-              )}
-
-            </div>
-          )}
-
-          {/* Detailed Dashboard Stats */}
-          <div className="bg-[#0d0f14] rounded-xl p-5 border border-white/5 flex flex-col gap-4">
-            <h3 className="text-sm font-medium text-[#e8ecf4] flex items-center gap-2 mb-2">
-              <Gauge size={16} className="text-[#f5a623]" />
-              仪表盘数据
-            </h3>
-            
-            <div className="grid grid-cols-2 gap-y-5 gap-x-3">
-              <div className="flex flex-col">
-                <span className="text-xs text-[#6b7a99] mb-1 flex items-center gap-1"><MapPin size={12}/>行驶里程</span>
-                <span className="font-display text-lg text-[#e8ecf4] tracking-wide">{record.drivenKm || '--'} <span className="text-[10px] font-sans text-[#6b7a99] ml-0.5">km</span></span>
-              </div>
-              
-              <div className="flex flex-col">
-                <span className="text-xs text-[#6b7a99] mb-1 flex items-center gap-1"><Zap size={12}/>平均车速</span>
-                <span className="font-display text-lg text-[#e8ecf4] tracking-wide">{record.dashboardAvgSpeed || '--'} <span className="text-[10px] font-sans text-[#6b7a99] ml-0.5">km/h</span></span>
-              </div>
-
-              <div className="flex flex-col">
-                <span className="text-xs text-[#6b7a99] mb-1 flex items-center gap-1"><Clock size={12}/>行驶时间</span>
-                <span className="font-display text-lg text-[#e8ecf4] tracking-wide">{record.dashboardDriveHours || '--'} <span className="text-[10px] font-sans text-[#6b7a99] ml-0.5">h</span></span>
-              </div>
-
-              <div className="flex flex-col">
-                <span className="text-xs text-[#6b7a99] mb-1 flex items-center gap-1"><Navigation size={12}/>剩余续航</span>
-                <span className="font-display text-lg text-[#e8ecf4] tracking-wide">{record.dashboardRange || '--'} <span className="text-[10px] font-sans text-[#6b7a99] ml-0.5">km</span></span>
-              </div>
-
-              {record.dashboardOdo && (
-                <div className="flex flex-col col-span-2 mt-1 pt-4 border-t border-white/5">
-                  <span className="text-xs text-[#6b7a99] mb-1 flex items-center gap-1"><Gauge size={12}/>总计里程 (ODO)</span>
-                  <span className="font-display text-lg text-[#e8ecf4] tracking-wide">{record.dashboardOdo} <span className="text-[10px] font-sans text-[#6b7a99] ml-0.5">km</span></span>
-                </div>
-              )}
-            </div>
+          <div className="detail-note">
+            <span>{metrics.odoMessage}</span>
+            {metrics.odoDiff !== null && (
+              <span>ODO 差值：{metrics.odoDiff > 0 ? '+' : ''}{metrics.odoDiff} km</span>
+            )}
           </div>
-          
-        </div>
+        </section>
+
+        {(actual > 0 || dash > 0 || avgFuel > 0) && (
+          <section className="detail-card">
+            <div className="detail-card-title">
+              <Activity size={18} />
+              <span>油耗对比分析</span>
+            </div>
+            {actual > 0 && (
+              <FuelBar label="实际油耗" value={`${actual.toFixed(2)} L/100km`} width={getPercent(actual)} tone="brand" />
+            )}
+            {dash > 0 && (
+              <FuelBar label="表显油耗" value={`${dash.toFixed(2)} L/100km`} width={getPercent(dash)} tone="accent" />
+            )}
+            {avgFuel > 0 && (
+              <FuelBar label="全周期平均" value={`${avgFuel.toFixed(2)} L/100km`} width={getPercent(avgFuel)} tone="muted" />
+            )}
+          </section>
+        )}
+
+        <section className="detail-card">
+          <div className="detail-card-title">
+            <Fuel size={18} />
+            <span>仪表盘数据</span>
+          </div>
+          <div className="detail-dashboard-grid">
+            {dashboardStats.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.label}>
+                  <Icon size={15} />
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       </div>
     </motion.div>
+  );
+}
+
+function FuelBar({ label, value, width, tone }: { label: string; value: string; width: string; tone: 'brand' | 'accent' | 'muted' }) {
+  return (
+    <div className="detail-bar-row">
+      <div className="flex items-center justify-between gap-3">
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+      <div className="detail-bar-track">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width }}
+          transition={{ duration: 0.45 }}
+          className={`detail-bar-fill detail-bar-${tone}`}
+        />
+      </div>
+    </div>
   );
 }

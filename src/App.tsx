@@ -130,6 +130,23 @@ export default function App() {
     setActiveTab('add');
   };
 
+  const getQuickOcrProgress = () => {
+    const match = quickOcrStatus.match(/recognizing_(\d+)_(\d+)/);
+    if (!match) return quickOcrStatus === 'busy' ? 48 : 18;
+    const current = Number(match[1]);
+    const total = Number(match[2]);
+    return Math.min(92, Math.max(24, Math.round((current / total) * 86)));
+  };
+
+  const getQuickOcrLabel = () => {
+    const match = quickOcrStatus.match(/recognizing_(\d+)_(\d+)/);
+    if (match) return `正在识别第 ${match[1]} / ${match[2]} 张`;
+    if (quickOcrStatus === 'busy') return '正在识别图片';
+    return '正在准备识别';
+  };
+
+  const quickOcrProgress = getQuickOcrProgress();
+
   const currentTab = tabMeta[activeTab];
 
   if (!isLoaded) return <div className="app-loading-shell bg-[#1a1a18]" />;
@@ -273,12 +290,36 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[90] bg-[#1a1a18]/75 backdrop-blur-xl grid place-items-center px-8 text-center"
+            className="absolute inset-0 z-[90] bg-[#191817]/45 backdrop-blur-md flex items-end px-4 pb-[calc(92px+env(safe-area-inset-bottom,0px))]"
           >
-            <div className="rounded-2xl bg-[#1a1e2a] border border-white/10 p-6 shadow-2xl">
-              <Loader2 size={30} className="mx-auto mb-3 animate-spin text-[#4fc3f7]" />
-              <div className="text-sm font-medium text-[#e8ecf4]">正在识别图片</div>
-              <div className="mt-1 text-xs text-[#6b7a99]">小票和仪表盘数据会合并到一张确认单里</div>
+            <div className="ocr-progress-panel w-full rounded-[24px] border p-5 shadow-2xl">
+              <div className="flex items-start gap-3">
+                <div className="ocr-progress-icon">
+                  <Loader2 size={22} className="animate-spin" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold text-[#191817]">{getQuickOcrLabel()}</div>
+                    <div className="text-xs font-semibold text-[#7a8775]">{quickOcrProgress}%</div>
+                  </div>
+                  <div className="mt-2 text-xs leading-relaxed text-[#8d8981]">
+                    正在压缩图片、调用 OCR，并把小票和仪表盘数据合并到确认单。
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#e0ddd6]">
+                <motion.div
+                  className="h-full rounded-full bg-[#1f1e1b]"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${quickOcrProgress}%` }}
+                  transition={{ duration: 0.25 }}
+                />
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px] font-semibold text-[#9b978f]">
+                <span className={cn(quickOcrProgress >= 18 && 'text-[#191817]')}>压缩</span>
+                <span className={cn(quickOcrProgress >= 45 && 'text-[#191817]')}>识别</span>
+                <span className={cn(quickOcrProgress >= 75 && 'text-[#191817]')}>合并</span>
+              </div>
             </div>
           </motion.div>
         )}

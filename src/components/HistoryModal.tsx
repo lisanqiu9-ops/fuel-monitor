@@ -1,5 +1,5 @@
 import { FuelRecord } from '../types';
-import { Trash2, ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Fuel, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -16,70 +16,87 @@ export function HistoryModal({ records, onClose, onDelete, onRecordClick }: Prop
 
   return (
     <motion.div
-      initial={{ x: '100%' }}
-      animate={{ x: 0 }}
-      exit={{ x: '100%' }}
-      transition={{ type: "spring", damping: 26, stiffness: 260 }}
-      className="absolute inset-0 bg-[#1a1a18] z-50 flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.3)]"
+      initial={{ y: 18, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 18, opacity: 0 }}
+      transition={{ duration: 0.22 }}
+      className="history-page absolute inset-0 z-50 flex flex-col"
     >
-      {/* Header */}
-      <div className="flex justify-between items-center px-3 py-3 border-b border-white/5 bg-[#1a1a18]/90 backdrop-blur-xl shrink-0 pt-safe z-10">
-        <button onClick={onClose} className="flex items-center text-[#6b7a99] active:text-[#e8ecf4] transition-colors p-2 z-10 -ml-2">
-          <ChevronLeft size={24} />
-          <span className="text-sm font-medium">返回</span>
+      <div className="history-header shrink-0 px-5 pt-safe">
+        <button type="button" onClick={onClose} className="soft-back-button" aria-label="返回">
+          <ChevronLeft size={22} />
         </button>
-        <h2 className="text-[#e8ecf4] font-medium absolute left-1/2 -translate-x-1/2">全部记录</h2>
-        <div className="w-[60px]" />
+        <div className="min-w-0 flex-1 text-center">
+          <div className="text-[11px] font-semibold text-[#9b978f]">油耗监控</div>
+          <h2 className="mt-0.5 text-lg font-semibold text-[#191817]">全部记录</h2>
+        </div>
+        <div className="w-10" />
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-safe">
+      <div className="history-scroll flex-1 overflow-y-auto px-5 pb-[calc(28px+env(safe-area-inset-bottom,0px))]">
         {sortedRecords.length === 0 ? (
-          <div className="text-center text-[#6b7a99] text-sm p-10 font-light mt-10">暂无数据记录</div>
+          <div className="history-empty">暂无数据记录</div>
         ) : (
-          <div className="flex flex-col">
-            {sortedRecords.map((r, i) => (
-              <div key={r.id} className={cn("px-5 py-4 flex items-center justify-between active:bg-white/5 transition-colors", i !== sortedRecords.length - 1 ? "border-b border-white/5" : "")}>
-                <div className="flex flex-col gap-1 flex-1 cursor-pointer" onClick={() => onRecordClick(r)}>
-                  <div className="text-sm font-light text-[#e8ecf4]">{format(parseISO(r.date), 'yyyy-MM-dd')}</div>
-                  <div className="text-[#6b7a99] text-xs flex gap-2">
-                    <span className="font-display tracking-wide">{r.fuelLiters} L</span>
-                    <span>•</span>
-                    <span className="font-display tracking-wide">¥{r.totalCost}</span>
-                    {r.fuelType && (
-                      <>
-                        <span>•</span>
-                        <span className="tracking-wide">{r.fuelType}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  {r.actualFuelPer100 !== null ? (
-                    <div className={cn("flex items-baseline gap-1 px-3 py-1.5 rounded-full cursor-pointer",
-                      r.actualFuelPer100 <= 6.0 ? "bg-green-500/15 text-green-400" :
-                      r.actualFuelPer100 <= 7.0 ? "bg-yellow-500/15 text-[#f5a623]" :
-                      "bg-red-500/15 text-[#ff4757]"
-                    )} onClick={() => onRecordClick(r)}>
-                      <span className="font-display text-base tracking-wide font-medium">{r.actualFuelPer100.toFixed(2)}</span>
-                      <span className="text-[10px] opacity-80 font-sans tracking-wider">L/100km</span>
+          <div className="space-y-3">
+            {sortedRecords.map((record) => (
+              <article key={record.id} className="history-record-card">
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 text-left"
+                  onClick={() => onRecordClick(record)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="history-record-icon">
+                      <Fuel size={18} />
                     </div>
-                  ) : (
-                    <span className="text-[#6b7a99] text-sm px-3 cursor-pointer" onClick={() => onRecordClick(r)}>-</span>
-                  )}
-                  
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm(`确定要删除 ${r.date} 的记录吗？`)) {
-                        onDelete(r.id);
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="truncate text-base font-semibold text-[#191817]">加油记录</div>
+                        <div className="shrink-0 text-lg font-semibold text-[#191817]">
+                          ¥{record.totalCost.toFixed(0)}
+                        </div>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-[#8d8981]">
+                        <span>{format(parseISO(record.date), 'yyyy-MM-dd')}</span>
+                        <span>·</span>
+                        <span>{record.fuelLiters} L</span>
+                        {record.fuelType && (
+                          <>
+                            <span>·</span>
+                            <span>{record.fuelType}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                <div className="mt-3 flex items-center justify-between border-t border-[#ded9cf] pt-3">
+                  <button
+                    type="button"
+                    className={cn(
+                      'history-fuel-pill',
+                      record.actualFuelPer100 === null && 'history-fuel-pill-empty'
+                    )}
+                    onClick={() => onRecordClick(record)}
+                  >
+                    {record.actualFuelPer100 !== null ? `${record.actualFuelPer100.toFixed(2)} L/100km` : '未解算'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (confirm(`确定删除 ${record.date} 的记录吗？`)) {
+                        onDelete(record.id);
                       }
                     }}
-                    className="p-2 text-[#ff4757]/70 hover:text-[#ff4757] ml-2"
+                    className="history-delete-button"
+                    aria-label="删除记录"
                   >
                     <Trash2 size={18} />
                   </button>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}
