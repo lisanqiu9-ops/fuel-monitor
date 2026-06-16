@@ -1,4 +1,4 @@
-import { BabySettings, StoryRecord, VoiceProfile } from './types';
+import { BabySettings, StoryRecord, VoiceProfile, VoiceRuntimeConfig } from './types';
 
 const LEGACY_SETTINGS_KEY = 'prenatal_story_settings_v1';
 const LEGACY_STORIES_KEY = 'prenatal_story_records_v1';
@@ -6,12 +6,14 @@ const LEGACY_VOICES_KEY = 'prenatal_voice_profiles_v1';
 const SETTINGS_KEY = 'babyStory:settings:v1';
 const STORIES_KEY = 'babyStory:stories:v1';
 const VOICES_KEY = 'babyStory:voices:v1';
+const VOICE_RUNTIME_KEY = 'babyStory:voiceRuntime:v1';
 
 export const systemVoices: VoiceProfile[] = [
   {
     id: 'system-mama-soft',
     name: '妈妈的轻声',
     kind: 'system',
+    provider: 'system',
     description: '柔和、慢速，适合睡前小故事。',
     createdAt: 'system',
   },
@@ -19,6 +21,7 @@ export const systemVoices: VoiceProfile[] = [
     id: 'system-papa-warm',
     name: '爸爸的暖声',
     kind: 'system',
+    provider: 'system',
     description: '温暖、稳定，像靠近肚子的低声朗读。',
     createdAt: 'system',
   },
@@ -26,6 +29,7 @@ export const systemVoices: VoiceProfile[] = [
     id: 'system-moon',
     name: '月光旁白',
     kind: 'system',
+    provider: 'system',
     description: '轻盈、舒缓，适合安静的夜晚。',
     createdAt: 'system',
   },
@@ -38,6 +42,16 @@ export const defaultSettings: BabySettings = {
   defaultLength: 'short',
   defaultStyle: 'star',
   defaultVoiceId: 'system-mama-soft',
+};
+
+export const defaultVoiceRuntimeConfig: VoiceRuntimeConfig = {
+  workerBaseUrl: '',
+  realVoiceEnabled: false,
+  mockFallbackEnabled: true,
+  targetModel: 'cosyvoice-v3.5-flash',
+  defaultRate: 0.85,
+  defaultVolume: 50,
+  defaultInstruction: '请用温柔、轻声、亲切、适合胎教睡前故事的语气朗读，语速稍慢，停顿自然。',
 };
 
 const readJson = <T,>(key: string, fallback: T): T => {
@@ -85,13 +99,31 @@ export const loadCustomVoices = () => readArray<VoiceProfile>(VOICES_KEY, LEGACY
 export const loadVoices = () => [...systemVoices, ...loadCustomVoices()];
 
 export const saveCustomVoices = (voices: VoiceProfile[]) => {
-  localStorage.setItem(VOICES_KEY, JSON.stringify(voices.filter(voice => voice.kind === 'custom')));
+  const sanitized = voices
+    .filter(voice => voice.kind === 'custom')
+    .map(({ sampleUrl: _sampleUrl, sampleDataUrl: _sampleDataUrl, previewAudioUrl: _previewAudioUrl, requestId: _requestId, sampleDuration: _sampleDuration, ...voice }) => voice);
+  localStorage.setItem(VOICES_KEY, JSON.stringify(sanitized));
   return loadVoices();
+};
+
+export const loadVoiceRuntimeConfig = () =>
+  readJson<VoiceRuntimeConfig>(VOICE_RUNTIME_KEY, defaultVoiceRuntimeConfig);
+
+export const saveVoiceRuntimeConfig = (config: VoiceRuntimeConfig) => {
+  const sanitized: VoiceRuntimeConfig = {
+    ...defaultVoiceRuntimeConfig,
+    ...config,
+    workerBaseUrl: config.workerBaseUrl.trim().replace(/\/+$/, ''),
+    targetModel: config.targetModel || defaultVoiceRuntimeConfig.targetModel,
+  };
+  localStorage.setItem(VOICE_RUNTIME_KEY, JSON.stringify(sanitized));
+  return sanitized;
 };
 
 export const clearBabyStoryCache = () => {
   localStorage.removeItem(STORIES_KEY);
   localStorage.removeItem(VOICES_KEY);
+  localStorage.removeItem(VOICE_RUNTIME_KEY);
   localStorage.removeItem(LEGACY_STORIES_KEY);
   localStorage.removeItem(LEGACY_VOICES_KEY);
 };

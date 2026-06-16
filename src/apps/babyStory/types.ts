@@ -2,6 +2,7 @@ export type StoryLength = 'short' | 'medium' | 'long';
 export type StoryStyle = 'forest' | 'ocean' | 'star' | 'daily' | 'poem';
 export type ReadingTone = 'soft' | 'happy' | 'sleepy';
 export type VoiceKind = 'system' | 'custom';
+export type VoiceProvider = 'system' | 'bailian' | 'mock';
 
 export interface BabySettings {
   babyName: string;
@@ -27,6 +28,13 @@ export interface VoiceProfile {
   kind: VoiceKind;
   description: string;
   createdAt: string;
+  provider?: VoiceProvider;
+  voiceId?: string;
+  targetModel?: string;
+  // Legacy-only fields. New Cloudflare Worker flow must not save raw samples or long-lived sample URLs.
+  sampleUrl?: string;
+  previewAudioUrl?: string;
+  requestId?: string;
   sampleDataUrl?: string;
   sampleDuration?: number;
 }
@@ -36,8 +44,14 @@ export interface AudioRecord {
   storyId: string;
   voiceId: string;
   voiceName: string;
-  dataUrl: string;
-  duration: number;
+  dataUrl?: string;
+  audioUrl?: string;
+  audioId?: string;
+  provider?: VoiceProvider;
+  model?: string;
+  requestId?: string;
+  expiresAt?: number | null;
+  duration?: number;
   createdAt: string;
 }
 
@@ -61,4 +75,27 @@ export interface SynthesizeInput {
   text: string;
   voice: VoiceProfile;
   tone: ReadingTone;
+  voiceConfig: VoiceRuntimeConfig;
+}
+
+export interface SynthesizeResult {
+  dataUrl?: string;
+  audioUrl?: string;
+  audioId?: string;
+  duration?: number;
+  expiresAt?: number | null;
+  requestId?: string;
+  provider?: VoiceProvider;
+  model?: string;
+  voiceId?: string;
+}
+
+export interface VoiceRuntimeConfig {
+  workerBaseUrl: string;
+  realVoiceEnabled: boolean;
+  mockFallbackEnabled: boolean;
+  targetModel: string;
+  defaultRate: number;
+  defaultVolume: number;
+  defaultInstruction: string;
 }

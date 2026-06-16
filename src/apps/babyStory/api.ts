@@ -1,9 +1,9 @@
-import { GenerateStoryInput, SynthesizeInput, StoryDraft } from './types';
+import { GenerateStoryInput, SynthesizeInput, SynthesizeResult, StoryDraft, VoiceProfile } from './types';
 
 const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
 
 const styleScene = {
-  forest: ['晨雾里的小森林', '银杏叶轻轻摆动', '一只会发光的小蘑菇'],
+  forest: ['晨雾里的小森林', '银杏叶轻轻摇动', '一只会发光的小蘑菇'],
   ocean: ['安静的海湾', '贝壳收藏着月光', '小浪花慢慢唱歌'],
   star: ['窗边的星星', '月亮的小邮局', '云朵铺好的小路'],
   daily: ['家里的柔软毯子', '厨房飘来的米香', '阳台上的小风铃'],
@@ -38,7 +38,9 @@ export async function generateStory(input: GenerateStoryInput): Promise<StoryDra
   const paragraphs = Array.from({ length: lengthParagraphs[input.length] }, (_, index) => {
     const scene = scenes[index % scenes.length];
     const tone = toneWords[input.tone];
-    const babyLine = index % 2 === 0 ? `${input.babyName}在妈妈的怀抱里听见了这份温柔。` : `${input.babyName}可以安心地做一个甜甜的小梦。`;
+    const babyLine = index % 2 === 0
+      ? `${input.babyName}在妈妈的怀抱里听见了这份温柔。`
+      : `${input.babyName}可以安心地做一个甜甜的小梦。`;
     return `${scene}里，有一个关于“${input.theme}”的小秘密。小风${tone}走过窗台，把一朵暖暖的光送到家里。爸爸妈妈把声音放得很低，像把云朵叠成小被子。${babyLine}`;
   });
 
@@ -88,17 +90,7 @@ const blobToDataUrl = (blob: Blob) =>
     reader.readAsDataURL(blob);
   });
 
-export async function synthesizeSpeech(input: SynthesizeInput) {
-  if (import.meta.env.VITE_USE_REAL_TTS_API === 'true') {
-    const response = await fetch('/api/tts/synthesize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    if (!response.ok) throw new Error('朗读合成服务暂时不可用');
-    return response.json();
-  }
-
+const mockSynthesizeSpeech = async (input: SynthesizeInput): Promise<SynthesizeResult> => {
   await wait(700);
   const sampleRate = 22050;
   const duration = Math.min(48, Math.max(12, Math.round(input.text.length / 32)));
@@ -119,23 +111,75 @@ export async function synthesizeSpeech(input: SynthesizeInput) {
   return {
     dataUrl: await blobToDataUrl(encodeWav(samples, sampleRate)),
     duration,
+    provider: 'mock',
+    voiceId: input.voice.id,
   };
-}
+};
 
-export async function cloneVoice(sampleDataUrl: string, name: string) {
-  if (import.meta.env.VITE_USE_REAL_VOICE_API === 'true') {
-    const response = await fetch('/api/voice/clone', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sampleDataUrl, name }),
-    });
-    if (!response.ok) throw new Error('音色克隆服务暂时不可用');
-    return response.json();
+const readApiError = async (response: Response) => {
+  try {
+    const data = await response.json();
+    return data.error || data.message || JSON.stringify(data);
+  } catch {
+    return response.statusText;
+  }
+};
+
+const joinWorkerUrl = (baseUrl: string, pathname: string) => {
+  const normalizedBase = baseUrl.trim().replace(/\/+$/, '');
+  if (!normalizedBase) throw new Error('请先在设置页配置 Cloudflare Worker Base URL');
+  return `${normalizedBase}${pathname}`;
+};
+
+export async function synthesizeSpeech(input: SynthesizeInput): Promise<SynthesizeResult> {
+  const shouldUseWorker = input.voiceConfig.realVoiceEnabled && input.voice.provider === 'bailian' && input.voice.voiceId;
+
+  if (shouldUseWorker) {
+    try {
+      const response = await fetch(joinWorkerUrl(input.voiceConfig.workerBaseUrl, '/api/tts/synthesize'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: input.text,
+          voiceId: input.voice.voiceId,
+          targetModel: input.voice.targetModel || input.voiceConfig.targetModel,
+          rate: input.voiceConfig.defaultRate,
+          pitch: 1.0,
+          volume: input.voiceConfig.defaultVolume,
+          format: 'mp3',
+          instruction: input.voiceConfig.defaultInstruction,
+        }),
+      });
+      if (!response.ok) throw new Error(await readApiError(response));
+      return response.json();
+    } catch (error) {
+      if (input.voiceConfig.mockFallbackEnabled) {
+        return mockSynthesizeSpeech(input);
+      }
+      throw error;
+    }
   }
 
-  await wait(350);
+  if (input.voiceConfig.mockFallbackEnabled) {
+    return mockSynthesizeSpeech(input);
+  }
+
+  throw new Error('当前未启用 mock 兜底。请在设置页配置 Worker Base URL 并启用真实语音，或打开 mock 兜底。');
+}
+
+export function createManualBailianVoice(input: {
+  name: string;
+  voiceId: string;
+  targetModel: string;
+}): VoiceProfile {
   return {
-    providerVoiceId: `mock-${Date.now()}`,
-    mode: 'mock',
+    id: `voice-${Date.now()}`,
+    name: input.name,
+    kind: 'custom',
+    provider: 'bailian',
+    voiceId: input.voiceId,
+    targetModel: input.targetModel,
+    description: `百炼音色 · ${input.targetModel}`,
+    createdAt: new Date().toISOString(),
   };
 }

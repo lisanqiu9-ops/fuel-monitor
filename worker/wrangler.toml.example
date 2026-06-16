@@ -1,0 +1,10 @@
+name = "baby-story-tts-worker"
+main = "src/index.ts"
+compatibility_date = "2026-06-16"
+
+[vars]
+BAILIAN_TARGET_MODEL = "cosyvoice-v3.5-flash"
+CORS_ALLOWED_ORIGIN = "http://127.0.0.1:3001"
+
+# Configure DASHSCOPE_API_KEY as a Cloudflare Worker Secret, not in this file:
+# wrangler secret put DASHSCOPE_API_KEY

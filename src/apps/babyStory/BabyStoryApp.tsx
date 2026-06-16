@@ -22,16 +22,19 @@ import {
   Volume2,
   Wand2,
 } from 'lucide-react';
-import { generateStory, synthesizeSpeech } from './api';
+import { createManualBailianVoice, generateStory, synthesizeSpeech } from './api';
 import {
   clearBabyStoryCache,
   defaultSettings,
+  defaultVoiceRuntimeConfig,
   loadSettings,
   loadStories,
+  loadVoiceRuntimeConfig,
   loadVoices,
   saveCustomVoices,
   saveSettings,
   saveStories,
+  saveVoiceRuntimeConfig,
   systemVoices,
 } from './storage';
 import {
@@ -43,6 +46,7 @@ import {
   StoryRecord,
   StoryStyle,
   VoiceProfile,
+  VoiceRuntimeConfig,
 } from './types';
 import { cn } from '../../lib/utils';
 
@@ -89,16 +93,9 @@ const id = () => crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toStrin
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' }).format(new Date(value));
 
-const blobToDataUrl = (blob: Blob) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error('录音保存失败'));
-    reader.readAsDataURL(blob);
-  });
-
-export default function App({ onBackToToolbox }: BabyStoryAppProps) {
+export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
   const [settings, setSettings] = useState<BabySettings>(defaultSettings);
+  const [voiceConfig, setVoiceConfig] = useState<VoiceRuntimeConfig>(defaultVoiceRuntimeConfig);
   const [stories, setStories] = useState<StoryRecord[]>([]);
   const [voices, setVoices] = useState<VoiceProfile[]>(systemVoices);
   const [activeTab, setActiveTab] = useState<TabId>('home');
@@ -107,8 +104,8 @@ export default function App({ onBackToToolbox }: BabyStoryAppProps) {
   const [style, setStyle] = useState<StoryStyle>('star');
   const [tone, setTone] = useState<ReadingTone>('soft');
   const [draft, setDraft] = useState<StoryDraft | null>(null);
-  const [selectedStoryId, setSelectedStoryId] = useState<string>('');
-  const [selectedVoiceId, setSelectedVoiceId] = useState<string>('system-mama-soft');
+  const [selectedStoryId, setSelectedStoryId] = useState('');
+  const [selectedVoiceId, setSelectedVoiceId] = useState('system-mama-soft');
   const [storyState, setStoryState] = useState<LoadState>('idle');
   const [audioState, setAudioState] = useState<LoadState>('idle');
   const [error, setError] = useState('');
@@ -118,6 +115,7 @@ export default function App({ onBackToToolbox }: BabyStoryAppProps) {
     const nextStories = loadStories();
     const nextVoices = loadVoices();
     setSettings(nextSettings);
+    setVoiceConfig(loadVoiceRuntimeConfig());
     setStories(nextStories);
     setVoices(nextVoices);
     setLength(nextSettings.defaultLength);
@@ -142,6 +140,7 @@ export default function App({ onBackToToolbox }: BabyStoryAppProps) {
 
   const persistStories = (nextStories: StoryRecord[]) => setStories(saveStories(nextStories));
   const persistSettings = (nextSettings: BabySettings) => setSettings(saveSettings(nextSettings));
+  const persistVoiceConfig = (nextConfig: VoiceRuntimeConfig) => setVoiceConfig(saveVoiceRuntimeConfig(nextConfig));
 
   const handleGenerate = async (nextTheme = theme || recommendedTheme) => {
     setStoryState('loading');
@@ -190,18 +189,24 @@ export default function App({ onBackToToolbox }: BabyStoryAppProps) {
         text: `${record.title}\n${record.body}`,
         voice: selectedVoice,
         tone: record.tone,
+        voiceConfig,
       });
       const audio: AudioRecord = {
         id: id(),
         storyId: record.id,
-        voiceId: selectedVoice.id,
+        voiceId: result.voiceId || selectedVoice.voiceId || selectedVoice.id,
         voiceName: selectedVoice.name,
         dataUrl: result.dataUrl,
+        audioUrl: result.audioUrl,
+        audioId: result.audioId,
+        provider: result.provider || selectedVoice.provider,
+        model: result.model || selectedVoice.targetModel,
+        requestId: result.requestId,
+        expiresAt: result.expiresAt,
         duration: result.duration,
         createdAt: today(),
       };
-      const withoutRecord = stories.filter(story => story.id !== record.id);
-      persistStories([{ ...record, audio, updatedAt: today() }, ...withoutRecord]);
+      persistStories([{ ...record, audio, updatedAt: today() }, ...stories.filter(story => story.id !== record.id)]);
       setSelectedStoryId(record.id);
       setActiveTab('player');
       setAudioState('idle');
@@ -244,7 +249,6 @@ export default function App({ onBackToToolbox }: BabyStoryAppProps) {
               pregnancyText={pregnancyText}
               recommendedTheme={recommendedTheme}
               recentAudio={recentAudio}
-              stories={stories}
               onGenerate={() => handleGenerate(recommendedTheme)}
               onGoGenerate={() => setActiveTab('generate')}
               onGoVoices={() => setActiveTab('voices')}
@@ -277,6 +281,7 @@ export default function App({ onBackToToolbox }: BabyStoryAppProps) {
           {activeTab === 'voices' && (
             <VoicesPage
               voices={voices}
+              voiceConfig={voiceConfig}
               selectedVoiceId={selectedVoiceId}
               onSelect={setSelectedVoiceId}
               onVoicesChange={setVoices}
@@ -317,12 +322,15 @@ export default function App({ onBackToToolbox }: BabyStoryAppProps) {
             <SettingsPage
               settings={settings}
               voices={voices}
-              onBackToToolbox={onBackToToolbox}
+              voiceConfig={voiceConfig}
               onSettingsChange={persistSettings}
+              onVoiceConfigChange={persistVoiceConfig}
+              onBackToToolbox={onBackToToolbox}
               onClear={() => {
                 clearBabyStoryCache();
                 setStories([]);
                 setVoices(systemVoices);
+                setVoiceConfig(defaultVoiceRuntimeConfig);
                 setSelectedStoryId('');
               }}
             />
@@ -374,7 +382,6 @@ function HomePage(props: {
   pregnancyText: string;
   recommendedTheme: string;
   recentAudio?: AudioRecord;
-  stories: StoryRecord[];
   onGenerate: () => void;
   onGoGenerate: () => void;
   onGoVoices: () => void;
@@ -416,7 +423,7 @@ function HomePage(props: {
         </button>
         <button type="button" onClick={props.onGoVoices} className="rounded-[24px] bg-[#f3e8d9] p-4 text-left text-[#8a6850]">
           <Mic size={20} />
-          <span className="mt-3 block text-sm font-black">录声音</span>
+          <span className="mt-3 block text-sm font-black">声音</span>
         </button>
         <button type="button" onClick={props.onGoHistory} className="rounded-[24px] bg-[#e7eadf] p-4 text-left text-[#66725e]">
           <BookOpen size={20} />
@@ -434,7 +441,7 @@ function HomePage(props: {
             <div className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#8c6380]"><Volume2 size={18} /></div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-black">{props.recentAudio.voiceName}</p>
-              <p className="text-xs font-bold text-[#9d8582]">{Math.round(props.recentAudio.duration)} 秒 mock 朗读</p>
+              <p className="text-xs font-bold text-[#9d8582]">{props.recentAudio.provider === 'bailian' ? '百炼真实音频' : `${Math.round(props.recentAudio.duration || 0)} 秒 mock 朗读`}</p>
             </div>
           </div>
         ) : (
@@ -516,8 +523,8 @@ function GeneratePage(props: {
           <textarea
             value={props.draft.body}
             onChange={event => props.onDraftChange({ ...props.draft!, body: event.target.value })}
-            rows={12}
-            className="mt-3 w-full resize-none rounded-3xl border border-[#eadcda] bg-[#fffaf5] p-4 text-sm leading-7 outline-none"
+            rows={10}
+            className="mt-3 w-full resize-none rounded-3xl border border-[#eadcda] bg-[#fffaf5] p-4 text-sm font-bold leading-7 outline-none"
           />
           <div className="mt-4 grid grid-cols-3 gap-2">
             <button type="button" onClick={props.onSave} className="flex h-11 items-center justify-center gap-1 rounded-2xl bg-[#efe5e1] text-xs font-black text-[#735f5a]"><Save size={16} />保存</button>
@@ -546,70 +553,38 @@ function OptionGroup({ title, children }: { title: string; children: ReactNode }
 
 function VoicesPage(props: {
   voices: VoiceProfile[];
+  voiceConfig: VoiceRuntimeConfig;
   selectedVoiceId: string;
   onSelect: (id: string) => void;
   onVoicesChange: (voices: VoiceProfile[]) => void;
 }) {
-  const [recording, setRecording] = useState(false);
-  const [recordedUrl, setRecordedUrl] = useState('');
-  const [seconds, setSeconds] = useState(0);
-  const [name, setName] = useState('我的温柔声音');
+  const [name, setName] = useState('我的百炼音色');
+  const [manualVoiceId, setManualVoiceId] = useState('');
+  const [targetModel, setTargetModel] = useState(props.voiceConfig.targetModel);
   const [message, setMessage] = useState('');
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<number>();
 
-  const stopRecording = () => recorderRef.current?.state === 'recording' && recorderRef.current.stop();
+  useEffect(() => setTargetModel(props.voiceConfig.targetModel), [props.voiceConfig.targetModel]);
 
-  const startRecording = async () => {
-    setMessage('');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      chunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
-      recorderRef.current = recorder;
-      recorder.ondataavailable = event => event.data.size && chunksRef.current.push(event.data);
-      recorder.onstop = async () => {
-        window.clearInterval(timerRef.current);
-        stream.getTracks().forEach(track => track.stop());
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-        setRecordedUrl(await blobToDataUrl(blob));
-        setRecording(false);
-      };
-      setSeconds(0);
-      setRecording(true);
-      recorder.start();
-      timerRef.current = window.setInterval(() => {
-        setSeconds(current => {
-          if (current >= 19) stopRecording();
-          return current + 1;
-        });
-      }, 1000);
-    } catch {
-      setMessage('无法访问麦克风，请检查浏览器权限。');
-    }
-  };
-
-  const saveVoice = () => {
-    if (!recordedUrl || seconds < 10) {
-      setMessage('请录制 10 到 20 秒的声音样本后再保存。');
+  const saveManualVoice = () => {
+    if (!name.trim()) {
+      setMessage('请给这个音色起一个方便识别的名称。');
       return;
     }
-    const customVoice: VoiceProfile = {
-      id: id(),
-      name,
-      kind: 'custom',
-      description: '已保存的本人或获授权家人声音样本，真实克隆接口后续由后端代理处理。',
-      createdAt: today(),
-      sampleDataUrl: recordedUrl,
-      sampleDuration: seconds,
-    };
+    if (!manualVoiceId.trim()) {
+      setMessage('请填写百炼控制台或接口返回的 voice_id。');
+      return;
+    }
+
+    const customVoice = createManualBailianVoice({
+      name: name.trim(),
+      voiceId: manualVoiceId.trim(),
+      targetModel,
+    });
     const next = saveCustomVoices([...props.voices, customVoice]);
     props.onVoicesChange(next);
     props.onSelect(customVoice.id);
-    setRecordedUrl('');
-    setSeconds(0);
-    setMessage('音色记录已保存。');
+    setManualVoiceId('');
+    setMessage('已保存百炼 voice_id。启用真实语音后，朗读会通过 Worker 调用百炼 TTS。');
   };
 
   return (
@@ -628,6 +603,7 @@ function VoicesPage(props: {
               <div className="min-w-0 flex-1">
                 <p className="font-black">{voice.name}</p>
                 <p className="text-xs leading-5 text-[#937b77]">{voice.description}</p>
+                {voice.provider === 'bailian' && <p className="mt-1 text-[11px] font-black text-[#8c6380]">百炼 TTS 音色</p>}
               </div>
               <ChevronRight size={18} className="text-[#b79b9a]" />
             </button>
@@ -636,18 +612,20 @@ function VoicesPage(props: {
       </Card>
 
       <Card>
-        <h2 className="text-lg font-black">我的声音</h2>
+        <h2 className="text-lg font-black">添加百炼音色</h2>
         <p className="mt-2 rounded-2xl bg-[#fff4df] p-3 text-xs font-bold leading-5 text-[#8c6d4d]">
-          只能采样本人或已获授权的家人声音。请不要录制或复刻陌生人、明星、主播等未授权声音。
+          这里不做声音复刻，只保存你已经在百炼侧可用的 voice_id。API Key 只放在 Cloudflare Worker 中，前端不会保存密钥。
         </p>
-        <input value={name} onChange={event => setName(event.target.value)} className="mt-3 w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" />
-        <div className="mt-3 flex items-center gap-2">
-          <button type="button" onClick={recording ? stopRecording : startRecording} className={cn('flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-sm font-black text-white', recording ? 'bg-[#b35d6b]' : 'bg-[#6f536b]')}>
-            <Mic size={18} /> {recording ? `停止录制 ${seconds}s` : '录制 10-20 秒'}
-          </button>
-          <button type="button" onClick={saveVoice} className="grid h-12 w-12 place-items-center rounded-2xl bg-[#efe5e1] text-[#735f5a]" aria-label="保存音色"><Save size={18} /></button>
-        </div>
-        {recordedUrl && <audio className="mt-3 w-full" src={recordedUrl} controls />}
+        <input value={name} onChange={event => setName(event.target.value)} placeholder="音色名称，例如：温柔女声" className="mt-3 w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" />
+        <select value={targetModel} onChange={event => setTargetModel(event.target.value)} className="mt-3 w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">
+          <option value="cosyvoice-v3.5-flash">cosyvoice-v3.5-flash</option>
+          <option value="cosyvoice-v3-flash">cosyvoice-v3-flash</option>
+        </select>
+        <input value={manualVoiceId} onChange={event => setManualVoiceId(event.target.value)} placeholder="填写百炼 voice_id" className="mt-3 w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" />
+        <button type="button" onClick={saveManualVoice} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#6f536b] text-sm font-black text-white">
+          <Save size={18} />
+          保存百炼音色
+        </button>
         {message && <p className="mt-3 text-xs font-bold text-[#8c6380]">{message}</p>}
       </Card>
     </div>
@@ -675,8 +653,10 @@ function PlayerPage(props: {
   }
 
   const audio = props.story.audio;
+  const audioSrc = audio?.audioUrl || audio?.dataUrl || '';
+  const isExpired = Boolean(audio?.expiresAt && Date.now() / 1000 > audio.expiresAt);
   const toggle = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || isExpired) return;
     if (audioRef.current.paused) {
       audioRef.current.play();
     } else {
@@ -698,7 +678,7 @@ function PlayerPage(props: {
         <Card>
           <audio
             ref={audioRef}
-            src={audio.dataUrl}
+            src={audioSrc}
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
             onTimeUpdate={event => setProgress((event.currentTarget.currentTime / (event.currentTarget.duration || 1)) * 100)}
@@ -706,8 +686,18 @@ function PlayerPage(props: {
           />
           <div className="flex items-center justify-between text-xs font-black text-[#9b7b80]">
             <span>{audio.voiceName}</span>
-            <span>{Math.round(audio.duration)} 秒</span>
+            <span>{audio.provider === 'bailian' ? '百炼真实音频' : `${Math.round(audio.duration || 0)} 秒`}</span>
           </div>
+          {audio.provider === 'bailian' && (
+            <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">
+              百炼真实音频{audio.model ? ` · ${audio.model}` : ''}{audio.expiresAt ? ` · 过期时间 ${new Date(audio.expiresAt * 1000).toLocaleString()}` : ''}
+            </p>
+          )}
+          {isExpired && (
+            <p className="mt-3 rounded-2xl bg-[#fff0f0] p-3 text-xs font-black leading-5 text-[#a9525e]">
+              这段百炼音频 URL 已过期，请重新生成朗读。
+            </p>
+          )}
           <input
             type="range"
             min={0}
@@ -716,12 +706,12 @@ function PlayerPage(props: {
             onChange={event => {
               const next = Number(event.target.value);
               setProgress(next);
-              if (audioRef.current) audioRef.current.currentTime = ((audioRef.current.duration || audio.duration) * next) / 100;
+              if (audioRef.current) audioRef.current.currentTime = ((audioRef.current.duration || audio.duration || 1) * next) / 100;
             }}
             className="mt-5 w-full accent-[#76506f]"
           />
           <div className="mt-5 flex items-center justify-center gap-3">
-            <button type="button" onClick={toggle} className="grid h-16 w-16 place-items-center rounded-full bg-[#6f536b] text-white">
+            <button type="button" onClick={toggle} disabled={isExpired || !audioSrc} className="grid h-16 w-16 place-items-center rounded-full bg-[#6f536b] text-white disabled:opacity-50">
               {playing ? <Pause size={28} /> : <Play size={28} className="translate-x-0.5" />}
             </button>
             <button type="button" onClick={props.onSynthesize} className="grid h-12 w-12 place-items-center rounded-full bg-[#efe5e1] text-[#735f5a]" aria-label="重新生成音频">
@@ -730,7 +720,7 @@ function PlayerPage(props: {
           </div>
         </Card>
       ) : (
-        <EmptyState text="这篇故事还没有朗读音频。" action="生成 mock 朗读" onAction={props.onSynthesize} />
+        <EmptyState text="这篇故事还没有朗读音频。请选择一个声音后生成朗读。" action="生成朗读" onAction={props.onSynthesize} />
       )}
       {props.audioState === 'error' && <ErrorState text={props.error} />}
     </div>
@@ -764,14 +754,30 @@ function HistoryPage(props: { stories: StoryRecord[]; onPlay: (story: StoryRecor
   );
 }
 
-function SettingsPage(props: { settings: BabySettings; voices: VoiceProfile[]; onSettingsChange: (settings: BabySettings) => void; onClear: () => void; onBackToToolbox?: () => void }) {
+function SettingsPage(props: {
+  settings: BabySettings;
+  voices: VoiceProfile[];
+  voiceConfig: VoiceRuntimeConfig;
+  onSettingsChange: (settings: BabySettings) => void;
+  onVoiceConfigChange: (config: VoiceRuntimeConfig) => void;
+  onClear: () => void;
+  onBackToToolbox?: () => void;
+}) {
   const [local, setLocal] = useState(props.settings);
+  const [voiceLocal, setVoiceLocal] = useState(props.voiceConfig);
   useEffect(() => setLocal(props.settings), [props.settings]);
+  useEffect(() => setVoiceLocal(props.voiceConfig), [props.voiceConfig]);
 
   const update = (patch: Partial<BabySettings>) => {
     const next = { ...local, ...patch };
     setLocal(next);
     props.onSettingsChange(next);
+  };
+
+  const updateVoice = (patch: Partial<VoiceRuntimeConfig>) => {
+    const next = { ...voiceLocal, ...patch };
+    setVoiceLocal(next);
+    props.onVoiceConfigChange(next);
   };
 
   return (
@@ -809,8 +815,39 @@ function SettingsPage(props: { settings: BabySettings; voices: VoiceProfile[]; o
       </Card>
 
       <Card>
+        <h2 className="text-lg font-black">百炼朗读</h2>
+        <p className="mt-2 text-sm leading-6 text-[#8c7470]">前端只保存 Worker Base URL 和朗读偏好。百炼 API Key 必须配置在 Cloudflare Worker Secrets 中。</p>
+        <SettingsField label="Worker Base URL">
+          <input value={voiceLocal.workerBaseUrl} onChange={event => updateVoice({ workerBaseUrl: event.target.value })} placeholder="https://your-worker.example.workers.dev" className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" />
+        </SettingsField>
+        <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]">
+          <span>启用真实语音</span>
+          <input type="checkbox" checked={voiceLocal.realVoiceEnabled} onChange={event => updateVoice({ realVoiceEnabled: event.target.checked })} className="accent-[#76506f]" />
+        </label>
+        <label className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]">
+          <span>Worker 不可用时使用 mock</span>
+          <input type="checkbox" checked={voiceLocal.mockFallbackEnabled} onChange={event => updateVoice({ mockFallbackEnabled: event.target.checked })} className="accent-[#76506f]" />
+        </label>
+        <SettingsField label="默认模型">
+          <select value={voiceLocal.targetModel} onChange={event => updateVoice({ targetModel: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">
+            <option value="cosyvoice-v3.5-flash">cosyvoice-v3.5-flash</option>
+            <option value="cosyvoice-v3-flash">cosyvoice-v3-flash</option>
+          </select>
+        </SettingsField>
+        <SettingsField label={`默认语速 ${voiceLocal.defaultRate}`}>
+          <input type="range" min="0.5" max="1.5" step="0.05" value={voiceLocal.defaultRate} onChange={event => updateVoice({ defaultRate: Number(event.target.value) })} className="w-full accent-[#76506f]" />
+        </SettingsField>
+        <SettingsField label={`默认音量 ${voiceLocal.defaultVolume}`}>
+          <input type="range" min="0" max="100" step="1" value={voiceLocal.defaultVolume} onChange={event => updateVoice({ defaultVolume: Number(event.target.value) })} className="w-full accent-[#76506f]" />
+        </SettingsField>
+        <SettingsField label="默认朗读语气">
+          <textarea value={voiceLocal.defaultInstruction} onChange={event => updateVoice({ defaultInstruction: event.target.value })} rows={3} className="w-full resize-none rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" />
+        </SettingsField>
+      </Card>
+
+      <Card>
         <h2 className="text-lg font-black">缓存</h2>
-        <p className="mt-2 text-sm leading-6 text-[#8c7470]">故事、音色和 mock 音频保存在本机浏览器。清理后不可恢复。</p>
+        <p className="mt-2 text-sm leading-6 text-[#8c7470]">故事、音色配置和 mock 音频保存在本机浏览器。清理后不可恢复。</p>
         <button type="button" onClick={props.onClear} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#fff0f0] text-sm font-black text-[#a9525e]"><Trash2 size={17} />清理故事与音色缓存</button>
       </Card>
 
