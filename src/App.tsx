@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ChangeEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { loadInitialData, saveRecords } from './data';
 import { FuelRecord } from './types';
 import { OverviewTab } from './components/OverviewTab';
@@ -7,11 +7,10 @@ import { AddRecordTab } from './components/AddRecordTab';
 import { HistoryModal } from './components/HistoryModal';
 import { RecordDetailModal } from './components/RecordDetailModal';
 import { SettingsTab } from './components/SettingsTab';
-import { Droplet, BarChart2, PlusCircle, Settings, Palette, Check, Loader2 } from 'lucide-react';
+import { Droplet, BarChart2, PlusCircle, Settings, Palette, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
-import { checkOcrConfig, compressImage, callBaiduOCR, parseOCRData } from './lib/ocr';
-import { OcrConfirmModal } from './components/OcrConfirmModal';
+import { checkOcrConfig } from './lib/ocr';
 
 const tabMeta = {
   overview: { title: '概览', subtitle: '油耗监控' },
@@ -35,12 +34,9 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [theme, setTheme] = useState<ThemeId>('collectui');
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [ocrLaunchRequest, setOcrLaunchRequest] = useState(0);
   const [ocrPrefillRequest, setOcrPrefillRequest] = useState(0);
   const [ocrPrefillData, setOcrPrefillData] = useState<any>(null);
-  const [quickOcrStatus, setQuickOcrStatus] = useState<'idle' | 'busy' | 'error' | string>('idle');
-  const [quickOcrError, setQuickOcrError] = useState('');
-  const [quickOcrResult, setQuickOcrResult] = useState<{ data: any, confidence: any } | null>(null);
-  const quickOcrInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setRecords(loadInitialData());
@@ -92,82 +88,15 @@ export default function App() {
     setRecords(saveRecords(nextRecords));
   };
 
-  const recognizeQuickFiles = async (
-    files: File[],
-    options: { mode: 'initial' | 'more'; data?: any; confidence?: any }
-  ) => {
-    if (files.length === 0) return;
-
-    try {
-      let combinedData = options.data ?? null;
-      let combinedConfidence = options.confidence ?? null;
-
-      for (let i = 0; i < files.length; i++) {
-        setQuickOcrStatus(files.length > 1 ? `recognizing_${i + 1}_${files.length}` : 'busy');
-        const base64 = await compressImage(files[i]);
-        const rawData = await callBaiduOCR(base64);
-        const parsed = parseOCRData(rawData.words_result, { data: combinedData, confidence: combinedConfidence });
-        combinedData = parsed.fields;
-        combinedConfidence = parsed.confidence;
-      }
-
-      setQuickOcrResult({ data: combinedData, confidence: combinedConfidence });
-      setQuickOcrStatus('idle');
-    } catch (err: any) {
-      setQuickOcrStatus('error');
-      setQuickOcrError(err.message || '识别失败');
-    }
-  };
-
   const handleGoRecognize = async () => {
-    setQuickOcrError('');
     const hasConfig = await checkOcrConfig();
     if (!hasConfig) {
       setActiveTab('settings');
       return;
     }
-    quickOcrInputRef.current?.click();
-  };
-
-  const handleQuickOcrFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []) as File[];
-    e.target.value = '';
-    await recognizeQuickFiles(files, { mode: 'initial' });
-  };
-
-  const handleQuickOcrAddMore = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []) as File[];
-    e.target.value = '';
-    await recognizeQuickFiles(files, {
-      mode: 'more',
-      data: quickOcrResult?.data,
-      confidence: quickOcrResult?.confidence,
-    });
-  };
-
-  const handleQuickOcrConfirm = (data: any) => {
-    setOcrPrefillData(data);
-    setOcrPrefillRequest(prev => prev + 1);
-    setQuickOcrResult(null);
     setActiveTab('add');
+    setOcrLaunchRequest(prev => prev + 1);
   };
-
-  const getQuickOcrProgress = () => {
-    const match = quickOcrStatus.match(/recognizing_(\d+)_(\d+)/);
-    if (!match) return quickOcrStatus === 'busy' ? 48 : 18;
-    const current = Number(match[1]);
-    const total = Number(match[2]);
-    return Math.min(92, Math.max(24, Math.round((current / total) * 86)));
-  };
-
-  const getQuickOcrLabel = () => {
-    const match = quickOcrStatus.match(/recognizing_(\d+)_(\d+)/);
-    if (match) return `正在识别第 ${match[1]} / ${match[2]} 张`;
-    if (quickOcrStatus === 'busy') return '正在识别图片';
-    return '正在准备识别';
-  };
-
-  const quickOcrProgress = getQuickOcrProgress();
 
   const currentTab = tabMeta[activeTab];
 
@@ -222,16 +151,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <input
-        ref={quickOcrInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        className="hidden"
-        onChange={handleQuickOcrFileChange}
-      />
-
       <div className="app-scroll flex-1 overflow-y-auto relative">
         <AnimatePresence mode="wait">
           {activeTab === 'overview' && (
@@ -246,7 +165,7 @@ export default function App() {
           )}
           {activeTab === 'add' && (
             <motion.div key="add" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <AddRecordTab onSave={handleSave} onOpenHistory={() => setShowHistory(true)} onGoSettings={() => setActiveTab('settings')} ocrPrefillData={ocrPrefillData} ocrPrefillRequest={ocrPrefillRequest} />
+              <AddRecordTab onSave={handleSave} onOpenHistory={() => setShowHistory(true)} onGoSettings={() => setActiveTab('settings')} ocrLaunchRequest={ocrLaunchRequest} ocrPrefillData={ocrPrefillData} ocrPrefillRequest={ocrPrefillRequest} />
             </motion.div>
           )}
           {activeTab === 'settings' && (
@@ -306,74 +225,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {quickOcrStatus !== 'idle' && quickOcrStatus !== 'error' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[90] bg-[#191817]/45 backdrop-blur-md flex items-end px-4 pb-[calc(92px+env(safe-area-inset-bottom,0px))]"
-          >
-            <div className="ocr-progress-panel w-full rounded-[24px] border p-5 shadow-2xl">
-              <div className="flex items-start gap-3">
-                <div className="ocr-progress-icon">
-                  <Loader2 size={22} className="animate-spin" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-[#191817]">{getQuickOcrLabel()}</div>
-                    <div className="text-xs font-semibold text-[#7a8775]">{quickOcrProgress}%</div>
-                  </div>
-                  <div className="mt-2 text-xs leading-relaxed text-[#8d8981]">
-                    正在压缩图片、调用 OCR，并把小票和仪表盘数据合并到确认单。
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#e0ddd6]">
-                <motion.div
-                  className="h-full rounded-full bg-[#1f1e1b]"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${quickOcrProgress}%` }}
-                  transition={{ duration: 0.25 }}
-                />
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px] font-semibold text-[#9b978f]">
-                <span className={cn(quickOcrProgress >= 18 && 'text-[#191817]')}>压缩</span>
-                <span className={cn(quickOcrProgress >= 45 && 'text-[#191817]')}>识别</span>
-                <span className={cn(quickOcrProgress >= 75 && 'text-[#191817]')}>合并</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {quickOcrError && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
-            className="absolute left-4 right-4 bottom-[92px] z-[91] rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs text-[#ff4757]"
-            onClick={() => setQuickOcrError('')}
-          >
-            {quickOcrError}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {quickOcrResult && (
-          <OcrConfirmModal
-            data={quickOcrResult.data}
-            confidence={quickOcrResult.confidence}
-            onConfirm={handleQuickOcrConfirm}
-            onCancel={() => setQuickOcrResult(null)}
-            onAddMore={handleQuickOcrAddMore}
-            isProcessingMore={quickOcrStatus !== 'idle' && quickOcrStatus !== 'error'}
-          />
-        )}
-      </AnimatePresence>
-      
     </div>
   );
 }

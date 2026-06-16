@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FuelRecord } from '../types';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
-import { Camera, Image as ImageIcon, Loader2, AlertCircle } from 'lucide-react';
+import { Camera, Image as ImageIcon, Loader2, AlertCircle, Upload, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { checkOcrConfig, compressImage, callBaiduOCR, parseOCRData } from '../lib/ocr';
 import { OcrConfirmModal } from './OcrConfirmModal';
@@ -43,7 +43,8 @@ export function AddRecordTab({
   const [ocrResult, setOcrResult] = useState<{data: any, confidence: any} | null>(null);
   const [hasOcrConfig, setHasOcrConfig] = useState(false);
   const [pendingOcrFiles, setPendingOcrFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     checkOcrConfig().then(res => setHasOcrConfig(res));
@@ -51,7 +52,7 @@ export function AddRecordTab({
 
   useEffect(() => {
     if (ocrLaunchRequest > 0) {
-      window.setTimeout(() => fileInputRef.current?.click(), 120);
+      window.setTimeout(() => cameraInputRef.current?.click(), 120);
     }
   }, [ocrLaunchRequest]);
 
@@ -124,15 +125,24 @@ export function AddRecordTab({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCameraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []) as File[];
+    if (files.length === 0) return;
+
+    setPendingOcrFiles(prev => [...prev, files[0]]);
+    setOcrStatus('idle');
+    setOcrErrorMsg('');
+    e.target.value = '';
+  };
+
+  const handleUploadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []) as File[];
     if (files.length === 0) return;
 
     setPendingOcrFiles(prev => [...prev, ...files]);
     setOcrStatus('idle');
     setOcrErrorMsg('');
-
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    e.target.value = '';
   };
 
   const handleStartOcr = () => {
@@ -266,13 +276,18 @@ export function AddRecordTab({
     <div className="tab-content-panel flex flex-col gap-4 p-4 pb-24">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         
-        {/* === OCR 拍照区域 === */}
-        <div className="bg-[#1a1e2a] card-glow rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="text-[#e8ecf4] font-medium flex items-center gap-2 text-sm">
-              <Camera size={16} className="text-[#4fc3f7]" />
-              拍照识别小票
-            </h3>
+        {/* === OCR 拍照/上传区域 === */}
+        <div className="ocr-capture-card bg-[#1a1e2a] card-glow rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <div>
+              <h3 className="text-[#e8ecf4] font-medium flex items-center gap-2 text-sm">
+                <Camera size={16} className="text-[#4fc3f7]" />
+                拍照 / 上传识别
+              </h3>
+              <p className="mt-1 text-[11px] leading-relaxed text-[#6b7a99]">
+                拍照可连续添加多张；上传图片可多选，最后统一识别。
+              </p>
+            </div>
             {isOcrBusy && (
               <span className="text-[#4fc3f7] text-[11px] flex items-center gap-1 bg-[#4fc3f7]/10 border border-[#4fc3f7]/20 px-2 py-1 rounded-full">
                 <Loader2 size={12} className="animate-spin" />
@@ -284,10 +299,19 @@ export function AddRecordTab({
           <input 
             type="file" 
             accept="image/*" 
-            multiple
+            capture="environment"
             className="hidden" 
-            ref={fileInputRef}
-            onChange={handleFileChange}
+            ref={cameraInputRef}
+            onChange={handleCameraChange}
+          />
+
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            ref={uploadInputRef}
+            onChange={handleUploadChange}
           />
 
           {isOcrBusy && (
@@ -323,50 +347,82 @@ export function AddRecordTab({
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              <div className="flex gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => cameraInputRef.current?.click()}
                   disabled={ocrStatus !== 'idle'}
-                  className="flex-1 flex flex-col items-center justify-center gap-2 bg-[#0d0f14] border border-[#f5a623]/30 rounded-lg py-5 text-[#f5a623] active:bg-[#f5a623]/10 transition-colors disabled:opacity-50"
+                  className="ocr-mode-button ocr-mode-primary"
                 >
                   <Camera size={24} />
-                  <span className="text-xs font-medium">{pendingOcrFiles.length > 0 ? '继续添加照片' : '拍照 / 选图'}</span>
+                  <strong>{pendingOcrFiles.length > 0 ? '继续拍照' : '拍照添加'}</strong>
+                  <span>一次拍一张，加入队列</span>
                 </button>
-                <div className="flex-1 flex flex-col justify-center items-start px-2">
-                  <p className="text-[10px] text-[#6b7a99] leading-relaxed mb-1 flex items-start gap-1">
-                    <ImageIcon size={10} className="mt-0.5 shrink-0" />
-                    先暂存照片，拍完小票和仪表盘后再统一识别。
-                  </p>
-                  {pendingOcrFiles.length > 0 && (
-                    <div className="text-[11px] text-[#4fc3f7] mt-1">
-                      已暂存 {pendingOcrFiles.length} 张
-                    </div>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => uploadInputRef.current?.click()}
+                  disabled={ocrStatus !== 'idle'}
+                  className="ocr-mode-button"
+                >
+                  <Upload size={23} />
+                  <strong>上传图片</strong>
+                  <span>一次选择多张图片</span>
+                </button>
               </div>
 
               {pendingOcrFiles.length > 0 && (
-                <div className="grid grid-cols-[1fr_auto] gap-2">
+                <div className="ocr-upload-queue">
+                  <div className="ocr-upload-head">
+                    <div className="flex items-center gap-2">
+                      <ImageIcon size={14} />
+                      <span>待识别 {pendingOcrFiles.length} 张图片</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPendingOcrFiles([]);
+                        setOcrStatus('idle');
+                        setOcrErrorMsg('');
+                      }}
+                      disabled={ocrStatus !== 'idle'}
+                      aria-label="清空上传图片"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                  <div className="ocr-file-list">
+                    {pendingOcrFiles.map((file, index) => (
+                      <div key={`${file.name}-${file.lastModified}-${index}`}>
+                        <span>{index + 1}</span>
+                        <strong>{file.name || `图片 ${index + 1}`}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <button
+                      type="button"
+                      onClick={handleStartOcr}
+                      disabled={ocrStatus !== 'idle'}
+                      className="bg-[#f5a623] text-black font-semibold rounded-lg py-3 text-sm active:bg-[#d48c1a] transition-colors disabled:opacity-50"
+                    >
+                      开始识别 {pendingOcrFiles.length} 张
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => uploadInputRef.current?.click()}
+                      disabled={ocrStatus !== 'idle'}
+                      className="px-4 py-3 rounded-lg bg-[#0d0f14] border border-white/10 text-[#6b7a99] text-sm active:bg-white/5 disabled:opacity-50"
+                    >
+                      上传添加
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    onClick={handleStartOcr}
+                    onClick={() => cameraInputRef.current?.click()}
                     disabled={ocrStatus !== 'idle'}
-                    className="bg-[#f5a623] text-black font-semibold rounded-lg py-3 text-sm active:bg-[#d48c1a] transition-colors disabled:opacity-50"
+                    className="mt-2 w-full rounded-lg border border-white/10 bg-[#0d0f14] py-3 text-sm font-semibold text-[#f5a623] active:bg-white/5 disabled:opacity-50"
                   >
-                    开始识别 {pendingOcrFiles.length} 张
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPendingOcrFiles([]);
-                      setOcrStatus('idle');
-                      setOcrErrorMsg('');
-                    }}
-                    disabled={ocrStatus !== 'idle'}
-                    className="px-4 py-3 rounded-lg bg-[#0d0f14] border border-white/10 text-[#6b7a99] text-sm active:bg-white/5 disabled:opacity-50"
-                  >
-                    清空
+                    继续拍照添加
                   </button>
                 </div>
               )}
