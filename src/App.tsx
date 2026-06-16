@@ -6,15 +6,31 @@ import { cn } from './lib/utils';
 
 type RoutePath = '/' | '/fuel' | '/baby-story';
 
+const basePath = (() => {
+  const base = import.meta.env.BASE_URL || '/';
+  return base === '/' ? '' : base.replace(/\/$/, '');
+})();
+
+const stripBasePath = (pathname: string) => {
+  if (basePath && pathname.startsWith(basePath)) {
+    return pathname.slice(basePath.length) || '/';
+  }
+  return pathname;
+};
+
 const normalizePath = (pathname: string): RoutePath => {
-  if (pathname.startsWith('/fuel')) return '/fuel';
-  if (pathname.startsWith('/baby-story')) return '/baby-story';
+  const appPath = stripBasePath(pathname);
+  if (appPath.startsWith('/fuel')) return '/fuel';
+  if (appPath.startsWith('/baby-story')) return '/baby-story';
   return '/';
 };
 
+const toBrowserPath = (path: RoutePath) => `${basePath}${path === '/' ? '/' : path}`;
+
 const navigateTo = (path: RoutePath) => {
-  if (window.location.pathname !== path) {
-    window.history.pushState({}, '', path);
+  const nextPath = toBrowserPath(path);
+  if (window.location.pathname !== nextPath) {
+    window.history.pushState({}, '', nextPath);
     window.dispatchEvent(new PopStateEvent('popstate'));
   }
 };
@@ -54,7 +70,7 @@ function ToolboxHome() {
       {
         id: 'baby-story',
         title: '胎教故事助手',
-        subtitle: '生成胎教故事、声音采样、合成朗读',
+        subtitle: '生成胎教故事、选择音色、合成朗读',
         description: '每天为宝宝写一篇柔软小故事，并用选择的声音朗读。',
         icon: Baby,
         path: '/baby-story' as RoutePath,

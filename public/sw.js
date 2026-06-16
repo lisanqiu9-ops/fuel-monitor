@@ -1,5 +1,5 @@
-const CACHE_NAME = 'personal-toolbox-v1';
-const APP_ASSETS = ['/', '/manifest.webmanifest', '/pwa-icon.svg'];
+const CACHE_NAME = 'personal-toolbox-v2';
+const APP_ASSETS = ['./', 'manifest.webmanifest', 'pwa-icon.svg'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_ASSETS)));
@@ -17,6 +17,6 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const request = event.request;
-  if (request.method !== 'GET' || new URL(request.url).pathname.startsWith('/api/')) return;
-  event.respondWith(fetch(request).catch(() => caches.match(request).then(response => response || caches.match('/'))));
+  if (request.method !== 'GET' || new URL(request.url).pathname.includes('/api/')) return;
+  event.respondWith(fetch(request).catch(() => caches.match(request).then(response => response || caches.match('./'))));
 });

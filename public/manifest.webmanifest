@@ -2,14 +2,14 @@
   "name": "三秋工具箱",
   "short_name": "三秋工具箱",
   "description": "本地优先的个人工具集 PWA，包含油耗监控和胎教故事助手。",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "background_color": "#f8f1ea",
   "theme_color": "#f8f1ea",
   "icons": [
     {
-      "src": "/pwa-icon.svg",
+      "src": "pwa-icon.svg",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any maskable"
