@@ -17,7 +17,7 @@ const tabMeta = {
   overview: { title: '概览', subtitle: '油耗监控' },
   trend: { title: '趋势', subtitle: '油耗监控' },
   add: { title: '记录加油', subtitle: '油耗监控' },
-  settings: { title: '设置', subtitle: '油耗监控' },
+  settings: { title: '我的', subtitle: '油耗监控' },
 } as const;
 
 const themeOptions = [
@@ -285,7 +285,7 @@ export default function App() {
           className={cn("app-nav-item flex flex-col items-center justify-start w-full h-full relative transition-colors", activeTab === 'settings' ? 'text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
         >
           <Settings size={23} />
-          <span className="text-[11px] mt-0.5 font-medium">设置</span>
+          <span className="text-[11px] mt-0.5 font-medium">我的</span>
         </button>
       </div>
 

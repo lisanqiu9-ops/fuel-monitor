@@ -1,12 +1,19 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type ComponentType, type ReactNode } from 'react';
 import {
+  AlertTriangle,
   Check,
+  ChevronRight,
   ChevronDown,
   ChevronUp,
   Copy,
   Database,
   Download,
-  Settings,
+  FileJson,
+  Info,
+  MessageCircle,
+  ScanLine,
+  Shield,
+  Trash2,
   Upload,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -120,11 +127,13 @@ interface Props {
 
 type StatusState = { type: 'idle' | 'testing' | 'success' | 'error'; msg: string };
 type ImportMode = 'replace' | 'merge';
+type PanelId = 'ocr' | 'import' | 'security' | 'about' | null;
 
 export function SettingsTab({ records, onRecordsChange }: Props) {
   const [workerUrl, setWorkerUrl] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [showGuide, setShowGuide] = useState(false);
+  const [activePanel, setActivePanel] = useState<PanelId>(null);
   const [copied, setCopied] = useState(false);
   const [importMode, setImportMode] = useState<ImportMode>('replace');
   const [testRes, setTestRes] = useState<StatusState>({ type: 'idle', msg: '' });
@@ -225,6 +234,25 @@ export function SettingsTab({ records, onRecordsChange }: Props) {
     }
   };
 
+  const handleClearLocal = () => {
+    if (!window.confirm('确定清空当前浏览器里的全部加油记录吗？此操作不会影响你已经导出的 JSON 备份。')) return;
+    onRecordsChange([]);
+    setDataMsg({ type: 'success', msg: '已清空本地记录' });
+  };
+
+  const openPanel = (panel: Exclude<PanelId, null>) => {
+    setActivePanel(prev => prev === panel ? null : panel);
+  };
+
+  const ocrStatusText = workerUrl.trim() ? '已配置' : '未配置';
+  const syncStatusText = '本地 JSON';
+  const totalCost = records.reduce((sum, record) => sum + record.totalCost, 0);
+  const validFuel = records.filter(record => record.actualFuelPer100 !== null);
+  const avgFuel = validFuel.length > 0
+    ? validFuel.reduce((sum, record) => sum + (record.actualFuelPer100 ?? 0), 0) / validFuel.length
+    : null;
+  const latestDate = records.length > 0 ? records[records.length - 1].date : '暂无记录';
+
   const renderStatus = (state: StatusState) => (
     <AnimatePresence>
       {state.type === 'success' && (
@@ -241,116 +269,187 @@ export function SettingsTab({ records, onRecordsChange }: Props) {
   );
 
   return (
-    <div className="flex flex-col gap-4 p-4 pb-24 overflow-y-auto">
-      <div className="bg-[#1a1e2a] card-glow rounded-xl p-5 flex flex-col gap-5">
-        <div className="flex items-center gap-2 border-b border-white/5 pb-3">
-          <Database className="text-[#4fc3f7]" size={18} />
-          <h3 className="text-[#e8ecf4] font-medium text-sm">数据备份</h3>
+    <div className="settings-home tab-content-panel flex flex-col gap-4 p-4 pb-24">
+      <section className="settings-profile-card">
+        <div className="settings-avatar">油</div>
+        <div className="min-w-0 flex-1">
+          <div className="settings-profile-title">油耗监控助手</div>
+          <div className="settings-profile-sub">本地记录 · 数据自主管理</div>
+          <div className="settings-profile-meta">{records.length} 条记录 · 最近 {latestDate}</div>
         </div>
+        <div className={workerUrl.trim() ? 'settings-status-dot is-ready' : 'settings-status-dot'} />
+      </section>
 
-        <div className="text-xs text-[#6b7a99] leading-relaxed">
-          当前共有 {records.length} 条记录。分享应用时不要附带私有备份文件；自己使用新版时，可以在这里导入备份。
+      <section className="settings-stats-grid">
+        <div>
+          <span>累计油费</span>
+          <strong>¥{totalCost.toFixed(0)}</strong>
         </div>
+        <div>
+          <span>平均油耗</span>
+          <strong>{avgFuel !== null ? avgFuel.toFixed(2) : '--'}</strong>
+        </div>
+        <div>
+          <span>OCR 状态</span>
+          <strong>{ocrStatusText}</strong>
+        </div>
+      </section>
 
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={handleExport}
-            className="flex items-center justify-center gap-2 bg-[#1a1a18] border border-white/10 text-[#e8ecf4] font-medium text-sm rounded-lg py-3 active:bg-white/5 transition-colors"
+      <section className="settings-quick-panel">
+        <button type="button" className="settings-quick-item" onClick={handleExport}>
+          <span><FileJson size={18} /></span>
+          <strong>导出备份</strong>
+        </button>
+        <button type="button" className="settings-quick-item" onClick={() => openPanel('ocr')}>
+          <span><ScanLine size={18} /></span>
+          <strong>OCR 设置</strong>
+        </button>
+        <button type="button" className="settings-quick-item" onClick={() => openPanel('import')}>
+          <span><Upload size={18} /></span>
+          <strong>数据导入</strong>
+        </button>
+        <button type="button" className="settings-quick-item" onClick={() => openPanel('about')}>
+          <span><MessageCircle size={18} /></span>
+          <strong>问题反馈</strong>
+        </button>
+      </section>
+
+      <SettingsGroup title="常用功能">
+        <SettingsRow icon={Database} label="数据同步" value={syncStatusText} onClick={() => openPanel('import')} />
+        <SettingsRow icon={ScanLine} label="OCR 识别设置" value={ocrStatusText} onClick={() => openPanel('ocr')} />
+        <SettingsRow icon={Upload} label="导入历史数据" value="支持 JSON" onClick={() => openPanel('import')} />
+      </SettingsGroup>
+
+      <AnimatePresence initial={false}>
+        {activePanel === 'ocr' && (
+          <motion.section
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="settings-panel"
           >
-            <Download size={16} />
-            导出 JSON
-          </button>
-          <button
-            type="button"
-            onClick={() => importInputRef.current?.click()}
-            className="flex items-center justify-center gap-2 bg-[#1a1a18] border border-white/10 text-[#e8ecf4] font-medium text-sm rounded-lg py-3 active:bg-white/5 transition-colors"
+            <div className="settings-panel-head">
+              <div>
+                <span>OCR 识别配置</span>
+                <p>Web 端通过 Cloudflare Worker 转发百度 OCR</p>
+              </div>
+              <button type="button" onClick={() => setActivePanel(null)}>×</button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col">
+                <label className="settings-field-label">Cloudflare Worker URL</label>
+                <input
+                  type="url"
+                  value={workerUrl}
+                  onChange={e => {
+                    const next = e.target.value;
+                    setWorkerUrl(next);
+                    saveWorkerUrl(next);
+                  }}
+                  placeholder="https://xxx.workers.dev"
+                  className="settings-input"
+                />
+              </div>
+
+              <div className="flex flex-col">
+                <label className="settings-field-label">访问令牌（可选）</label>
+                <input
+                  type="password"
+                  value={accessToken}
+                  onChange={e => {
+                    const next = e.target.value;
+                    setAccessToken(next);
+                    saveAccessToken(next);
+                  }}
+                  placeholder="Worker 设置 OCR_ACCESS_TOKEN 后填写"
+                  className="settings-input"
+                />
+              </div>
+
+              <div className="settings-tip">
+                百度 API Key 和 Secret Key 不再保存在浏览器里。请把它们配置到 Cloudflare Worker 的环境变量中。
+              </div>
+
+              <button type="button" onClick={handleTest} disabled={testRes.type === 'testing'} className="settings-primary-button">
+                {testRes.type === 'testing' ? '连接中...' : '测试连接'}
+              </button>
+              {renderStatus(testRes)}
+            </div>
+          </motion.section>
+        )}
+
+        {activePanel === 'import' && (
+          <motion.section
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="settings-panel"
           >
-            <Upload size={16} />
-            导入 JSON
-          </button>
-        </div>
+            <div className="settings-panel-head">
+              <div>
+                <span>数据导入</span>
+                <p>当前共有 {records.length} 条记录，导入前建议先导出备份</p>
+              </div>
+              <button type="button" onClick={() => setActivePanel(null)}>×</button>
+            </div>
 
-        <div className="grid grid-cols-2 gap-2 bg-[#0d0f14] p-1 rounded-lg border border-white/5">
-          <button
-            type="button"
-            onClick={() => setImportMode('replace')}
-            className={`text-xs rounded-md py-2 transition-colors ${importMode === 'replace' ? 'bg-[#f5a623] text-black font-semibold' : 'text-[#6b7a99]'}`}
-          >
-            覆盖当前数据
-          </button>
-          <button
-            type="button"
-            onClick={() => setImportMode('merge')}
-            className={`text-xs rounded-md py-2 transition-colors ${importMode === 'merge' ? 'bg-[#f5a623] text-black font-semibold' : 'text-[#6b7a99]'}`}
-          >
-            合并到当前
-          </button>
-        </div>
+            <div className="grid grid-cols-2 gap-2 settings-segment">
+              <button type="button" onClick={() => setImportMode('replace')} className={importMode === 'replace' ? 'is-active' : ''}>
+                覆盖当前数据
+              </button>
+              <button type="button" onClick={() => setImportMode('merge')} className={importMode === 'merge' ? 'is-active' : ''}>
+                合并到当前
+              </button>
+            </div>
 
-        <input ref={importInputRef} type="file" accept="application/json,.json" className="hidden" onChange={handleImport} />
-        {renderStatus(dataMsg)}
-      </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" onClick={handleExport} className="settings-secondary-button">
+                <Download size={16} />
+                导出 JSON
+              </button>
+              <button type="button" onClick={() => importInputRef.current?.click()} className="settings-primary-button">
+                <Upload size={16} />
+                导入 JSON
+              </button>
+            </div>
+            <input ref={importInputRef} type="file" accept="application/json,.json" className="hidden" onChange={handleImport} />
+            {renderStatus(dataMsg)}
+          </motion.section>
+        )}
+      </AnimatePresence>
 
-      <div className="bg-[#1a1e2a] card-glow rounded-xl p-5 flex flex-col gap-5">
-        <div className="flex items-center gap-2 border-b border-white/5 pb-3">
-          <Settings className="text-[#f5a623]" size={18} />
-          <h3 className="text-[#e8ecf4] font-medium text-sm">OCR 识别配置</h3>
-        </div>
+      <SettingsGroup title="数据与安全">
+        <SettingsRow icon={Download} label="下载数据备份" value="JSON" onClick={handleExport} />
+        <SettingsRow icon={Shield} label="安全说明" onClick={() => openPanel('security')} />
+        <SettingsRow icon={Trash2} label="清空本地数据" danger onClick={handleClearLocal} />
+      </SettingsGroup>
 
-        <div className="flex flex-col">
-          <label className="text-xs font-medium text-[#6b7a99] mb-1.5">Cloudflare Worker URL</label>
-          <input
-            type="url"
-            value={workerUrl}
-            onChange={e => {
-              const next = e.target.value;
-              setWorkerUrl(next);
-              saveWorkerUrl(next);
-            }}
-            placeholder="https://xxx.workers.dev"
-            className="bg-[#1a1a18] border border-white/10 rounded-lg px-3 py-2 text-[#e8ecf4] text-sm focus:border-[#f5a623] focus:outline-none w-full placeholder:text-white/20"
-          />
-        </div>
+      <AnimatePresence initial={false}>
+        {activePanel === 'security' && (
+          <InfoPanel title="安全说明" icon={Shield} onClose={() => setActivePanel(null)}>
+            OCR 密钥只建议放在 Cloudflare Worker 环境变量中。Web 前端仅保存 Worker URL 和可选访问令牌；加油记录保存在当前浏览器 localStorage 中，跨设备使用请通过 JSON 备份迁移。
+          </InfoPanel>
+        )}
+      </AnimatePresence>
 
-        <div className="flex flex-col">
-          <label className="text-xs font-medium text-[#6b7a99] mb-1.5">访问令牌（可选）</label>
-          <input
-            type="password"
-            value={accessToken}
-            onChange={e => {
-              const next = e.target.value;
-              setAccessToken(next);
-              saveAccessToken(next);
-            }}
-            placeholder="Worker 设置 OCR_ACCESS_TOKEN 后填写"
-            className="bg-[#1a1a18] border border-white/10 rounded-lg px-3 py-2 text-[#e8ecf4] text-sm focus:border-[#f5a623] focus:outline-none w-full placeholder:text-white/20"
-          />
-        </div>
+      <SettingsGroup title="关于">
+        <SettingsRow icon={Info} label="关于 Web App" value="v0.1.0" onClick={() => openPanel('about')} />
+        <SettingsRow icon={AlertTriangle} label="使用建议" value="先备份" onClick={() => openPanel('security')} />
+      </SettingsGroup>
 
-        <div className="text-[10px] text-[#6b7a99] leading-relaxed bg-[#0d0f14] border border-white/5 rounded-lg p-3">
-          百度 API Key 和 Secret Key 不再保存在浏览器里。请把它们配置到 Cloudflare Worker 的环境变量中。访问令牌用于防止别人直接调用你的 Worker。
-        </div>
+      <AnimatePresence initial={false}>
+        {activePanel === 'about' && (
+          <InfoPanel title="关于油耗监控" icon={Info} onClose={() => setActivePanel(null)}>
+            这是面向个人使用的油耗记录工具，支持小票识别、手动记录、趋势核算和 JSON 备份。问题反馈可以先记录到你的项目待办里；后续如果要公开给别人使用，再补反馈入口和云同步。
+          </InfoPanel>
+        )}
+      </AnimatePresence>
 
-        <div className="flex flex-col gap-2 mt-2">
-          <button
-            onClick={handleTest}
-            disabled={testRes.type === 'testing'}
-            className="bg-[#1a1a18] border border-white/10 text-[#e8ecf4] font-medium text-sm rounded-lg py-3 active:bg-white/5 transition-colors disabled:opacity-50"
-          >
-            {testRes.type === 'testing' ? '连接中...' : '测试连接'}
-          </button>
-          {renderStatus(testRes)}
-        </div>
-      </div>
-
-      <div className="bg-[#1a1e2a] card-glow rounded-xl flex flex-col overflow-hidden">
-        <button
-          onClick={() => setShowGuide(!showGuide)}
-          className="px-5 py-4 flex justify-between items-center bg-transparent active:bg-white/5 transition-colors"
-        >
-          <span className="text-[#e8ecf4] font-medium text-sm">如何配置 OCR</span>
-          {showGuide ? <ChevronUp size={16} className="text-[#6b7a99]" /> : <ChevronDown size={16} className="text-[#6b7a99]" />}
+      <section className="settings-guide-card">
+        <button type="button" onClick={() => setShowGuide(!showGuide)} className="settings-guide-trigger">
+          <span>如何配置 OCR</span>
+          {showGuide ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
 
         <AnimatePresence>
@@ -359,56 +458,113 @@ export function SettingsTab({ records, onRecordsChange }: Props) {
               initial={{ height: 0 }}
               animate={{ height: 'auto' }}
               exit={{ height: 0 }}
-              className="px-5 flex flex-col gap-4 text-sm text-[#6b7a99] overflow-hidden"
+              className="settings-guide-body"
             >
-              <div className="pt-2 border-t border-white/5">
-                <p className="font-medium text-[#e8ecf4] mb-1">步骤 1：准备百度 OCR 密钥</p>
-                <p className="text-xs leading-relaxed">
-                  前往 <a href="https://console.bce.baidu.com/ai" target="_blank" className="text-[#4fc3f7] underline">百度智能云控制台</a>，创建文字识别应用，拿到 API Key 和 Secret Key。
-                </p>
+              <div>
+                <p>步骤 1：准备百度 OCR 密钥</p>
+                <span>
+                  前往 <a href="https://console.bce.baidu.com/ai" target="_blank">百度智能云控制台</a>，创建文字识别应用，拿到 API Key 和 Secret Key。
+                </span>
               </div>
 
               <div>
-                <p className="font-medium text-[#e8ecf4] mb-1">步骤 2：配置 Worker 环境变量</p>
-                <p className="text-xs leading-relaxed">
-                  在 Cloudflare Worker 的 Settings - Variables 里添加：
-                </p>
-                <div className="text-[10px] leading-relaxed bg-[#0d0f14] border border-white/5 rounded-lg p-3 mt-2">
+                <p>步骤 2：配置 Worker 环境变量</p>
+                <code>
                   BAIDU_API_KEY = 你的百度 API Key<br />
                   BAIDU_SECRET_KEY = 你的百度 Secret Key<br />
                   ALLOWED_ORIGINS = http://localhost:3000,http://localhost:3001,你的正式部署网址<br />
                   OCR_ACCESS_TOKEN = 可选，设置后前端也需要带令牌
-                </div>
+                </code>
               </div>
 
               <div>
-                <p className="font-medium text-[#e8ecf4] mb-1">步骤 3：部署 Worker 代码</p>
-                <p className="text-xs leading-relaxed mb-2">
-                  把下面代码部署到 Cloudflare Worker。部署后把 Worker URL 填到上方。
-                </p>
-                <div className="relative">
+                <p>步骤 3：部署 Worker 代码</p>
+                <span>把下面代码部署到 Cloudflare Worker。部署后把 Worker URL 填到 OCR 设置中。</span>
+                <div className="relative mt-2">
                   <pre className="worker-code-block p-3 rounded-lg text-[10px] overflow-x-auto border">
                     {WORKER_CODE}
                   </pre>
-                  <button
-                    onClick={copyCode}
-                    className="absolute top-2 right-2 p-1.5 bg-[#1a1a18] border border-white/10 rounded text-[#e8ecf4] hover:bg-white/10"
-                  >
+                  <button type="button" onClick={copyCode} className="settings-copy-button">
                     {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
                   </button>
                 </div>
               </div>
-
-              <div className="pb-5">
-                <p className="font-medium text-[#e8ecf4] mb-1">步骤 4：测试连接</p>
-                <p className="text-xs leading-relaxed">
-                  填入 Worker URL 后点击“测试连接”。连接成功后，就可以在记录页使用拍照识别。
-                </p>
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </section>
+
+      <footer className="settings-brand-footer">
+        <strong>油耗监控助手</strong>
+        <span>本地记录 · 数据自主管理</span>
+        <span>Web v0.1.0</span>
+      </footer>
     </div>
+  );
+}
+
+function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="settings-group-block">
+      <div className="settings-group-title">{title}</div>
+      <div className="settings-list-card">{children}</div>
+    </section>
+  );
+}
+
+function SettingsRow({
+  icon: Icon,
+  label,
+  value,
+  danger = false,
+  onClick,
+}: {
+  icon: ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  value?: string;
+  danger?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className={danger ? 'settings-list-row is-danger' : 'settings-list-row'} onClick={onClick}>
+      <span className="settings-row-left">
+        <span className="settings-row-icon"><Icon size={17} /></span>
+        <strong>{label}</strong>
+      </span>
+      <span className="settings-row-right">
+        {value && <span>{value}</span>}
+        <ChevronRight size={16} />
+      </span>
+    </button>
+  );
+}
+
+function InfoPanel({
+  title,
+  icon: Icon,
+  children,
+  onClose,
+}: {
+  title: string;
+  icon: ComponentType<{ size?: number; className?: string }>;
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      className="settings-panel"
+    >
+      <div className="settings-panel-head">
+        <div className="flex items-center gap-2">
+          <span className="settings-row-icon"><Icon size={17} /></span>
+          <span>{title}</span>
+        </div>
+        <button type="button" onClick={onClose}>×</button>
+      </div>
+      <p className="settings-panel-text">{children}</p>
+    </motion.section>
   );
 }

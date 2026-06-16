@@ -263,7 +263,7 @@ export function AddRecordTab({
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 pb-24 overflow-y-auto">
+    <div className="tab-content-panel flex flex-col gap-4 p-4 pb-24">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         
         {/* === OCR 拍照区域 === */}

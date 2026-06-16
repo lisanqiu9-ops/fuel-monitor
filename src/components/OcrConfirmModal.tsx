@@ -1,8 +1,9 @@
 import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, AlertTriangle, ChevronLeft, Plus, Loader2 } from 'lucide-react';
+import { Check, AlertTriangle, ChevronLeft, Plus, Loader2, ClipboardList } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { generateOcrPreviewReport } from '../lib/report';
 
 interface Props {
   data: any;
@@ -15,6 +16,7 @@ interface Props {
 
 export function OcrConfirmModal({ data, confidence, onConfirm, onCancel, onAddMore, isProcessingMore }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const report = generateOcrPreviewReport(data);
   
   const StatusIcon = ({ status }: { status: 'high' | 'low' | null }) => {
     if (status === 'high') return <Check size={16} className="text-green-400" />;
@@ -158,6 +160,28 @@ export function OcrConfirmModal({ data, confidence, onConfirm, onCancel, onAddMo
               </div>
             )}
             
+          </div>
+
+          <div className={`ocr-report-card report-tone-${report.tone}`}>
+            <div className="ocr-report-title">
+              <ClipboardList size={16} />
+              <span>识别解读</span>
+            </div>
+            <div className="report-headline">
+              <strong>{report.title}</strong>
+              <p>{report.summary}</p>
+            </div>
+            <div className="report-list">
+              {report.points.map((point) => (
+                <div key={point}>{point}</div>
+              ))}
+            </div>
+            <div className="report-next">
+              <span>建议</span>
+              {report.nextActions.map((action) => (
+                <p key={action}>{action}</p>
+              ))}
+            </div>
           </div>
         </div>
       </div>

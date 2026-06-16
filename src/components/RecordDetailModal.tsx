@@ -1,7 +1,8 @@
 import { FuelRecord } from '../types';
-import { Activity, Calendar, ChevronLeft, Clock, Fuel, Gauge, Navigation, Route, Zap } from 'lucide-react';
+import { Activity, Calendar, ChevronLeft, ClipboardList, Clock, Fuel, Gauge, Navigation, Route, Tag, WalletCards, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { calculateEnergyMetrics, getPreviousRecord } from '../lib/metrics';
+import { generateRecordReport } from '../lib/report';
 
 interface Props {
   record: FuelRecord;
@@ -27,18 +28,20 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
   const actual = record.actualFuelPer100 || 0;
   const dash = record.dashboardFuelPer100 || 0;
   const metrics = calculateEnergyMetrics(record, getPreviousRecord(allRecords, record));
+  const report = generateRecordReport(record, allRecords);
   const maxScale = Math.max(actual, dash, avgFuel, 10);
   const getPercent = (value: number) => `${Math.min((value / maxScale) * 100, 100)}%`;
 
   const stats = [
-    { label: '加油量', value: formatNumber(record.fuelLiters, ' L') },
-    { label: '总价', value: formatMoney(record.totalCost, 0) },
-    { label: '单价', value: `${formatMoney(record.pricePerLiter, 2)}/L` },
-    { label: '油号', value: record.fuelType || '--' },
+    { icon: Fuel, label: '加油量', value: formatNumber(record.fuelLiters, ' L'), primary: true },
+    { icon: WalletCards, label: '总价', value: formatMoney(record.totalCost, 0), primary: true },
+    { icon: Tag, label: '单价', value: `${formatMoney(record.pricePerLiter, 2)}/L`, primary: false },
+    { icon: Fuel, label: '油号', value: record.fuelType || '--', primary: false },
   ];
 
   const dashboardStats = [
     { icon: Route, label: '行驶里程', value: formatNumber(record.drivenKm, ' km') },
+    { icon: Gauge, label: '表显油耗', value: formatNumber(record.dashboardFuelPer100, ' L/100km', 1) },
     { icon: Zap, label: '均速', value: formatNumber(record.dashboardAvgSpeed, ' km/h') },
     { icon: Clock, label: '行驶时间', value: record.dashboardDriveHours ? `${record.dashboardDriveHours} h` : '--' },
     { icon: Navigation, label: '剩余续航', value: formatNumber(record.dashboardRange, ' km') },
@@ -59,7 +62,7 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
         </button>
         <div className="min-w-0 flex-1 text-center">
           <div className="text-[11px] font-semibold text-[#9b978f]">加油记录</div>
-          <h2 className="mt-0.5 text-lg font-semibold text-[#191817]">详情</h2>
+          <h2 className="mt-0.5 text-lg font-semibold text-[#191817]">加油详情</h2>
         </div>
         <div className="w-10" />
       </div>
@@ -67,26 +70,59 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
       <div className="record-detail-scroll flex-1 overflow-y-auto px-5 pb-[calc(28px+env(safe-area-inset-bottom,0px))]">
         <section className="detail-date-row">
           <Calendar size={18} />
-          <span>{record.date}</span>
+          <div>
+            <span>{record.date}</span>
+            <small>{record.fuelType || '加油记录'} · {record.fuelLiters} L</small>
+          </div>
         </section>
 
-        <section className="detail-stat-grid">
-          {stats.map((item) => (
-            <div key={item.label} className="detail-stat-card">
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
+        <section className="detail-main-card">
+          <div className="detail-main-grid">
+            {stats.map((item) => {
+              const Icon = item.icon;
+              return (
+              <div key={item.label} className={item.primary ? 'detail-main-item detail-main-primary' : 'detail-main-item'}>
+                <div className="detail-mini-icon"><Icon size={15} /></div>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </div>
+              );
+            })}
+          </div>
+          {metrics.costPerKm !== null && (
+            <div className="detail-cost-row">
+              <span>每公里花费</span>
+              <strong>{metrics.costPerKm.toFixed(3)} 元/km</strong>
             </div>
-          ))}
-          <div className="detail-stat-card col-span-2">
-            <span>每公里花费</span>
-            <strong>{metrics.costPerKm !== null ? `${metrics.costPerKm.toFixed(3)} 元/km` : '--'}</strong>
+          )}
+        </section>
+
+        <section className={`detail-card detail-report-card report-tone-${report.tone}`}>
+          <div className="detail-card-title">
+            <ClipboardList size={18} />
+            <span>本次解读</span>
+          </div>
+          <div className="report-headline">
+            <strong>{report.title}</strong>
+            <p>{report.summary}</p>
+          </div>
+          <div className="report-list">
+            {report.points.map((point) => (
+              <div key={point}>{point}</div>
+            ))}
+          </div>
+          <div className="report-next">
+            <span>建议</span>
+            {report.nextActions.map((action) => (
+              <p key={action}>{action}</p>
+            ))}
           </div>
         </section>
 
         <section className="detail-card">
           <div className="detail-card-title">
             <Activity size={18} />
-            <span>跳枪法闭环解算</span>
+            <span>油耗核算</span>
           </div>
           <div className="detail-metric-grid">
             <div>

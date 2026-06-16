@@ -14,9 +14,10 @@ import {
   YAxis,
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
-import { AlertTriangle, CheckCircle2, Gauge, Route, WalletCards, Zap } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardList, Gauge, Route, WalletCards, Zap } from 'lucide-react';
 import { calculateEnergyMetrics } from '../lib/metrics';
 import { cn } from '../lib/utils';
+import { generateTrendReport } from '../lib/report';
 
 interface Props {
   records: FuelRecord[];
@@ -66,6 +67,7 @@ export function TrendTab({ records }: Props) {
   const avgDisplayError = enriched.filter(r => r.displayError !== null).length > 0
     ? enriched.filter(r => r.displayError !== null).reduce((sum, r) => sum + (r.displayError ?? 0), 0) / enriched.filter(r => r.displayError !== null).length
     : null;
+  const report = generateTrendReport(records);
 
   const getCostColor = (value: number) => {
     if (value <= 0.45) return '#7a8775';
@@ -79,7 +81,7 @@ export function TrendTab({ records }: Props) {
         <div className="insight-card col-span-2">
           <div className="insight-icon"><Gauge size={18} /></div>
           <div>
-            <span>全周期平均实际油耗</span>
+            <span>平均实际油耗</span>
             <strong>{avgFuel !== null ? avgFuel.toFixed(2) : '--'} <small>L/100km</small></strong>
           </div>
         </div>
@@ -102,11 +104,11 @@ export function TrendTab({ records }: Props) {
       <section className="analysis-card">
         <div className="analysis-title">
           {invalidCount > 0 ? <AlertTriangle size={17} /> : <CheckCircle2 size={17} />}
-          <span>跳枪法闭环校验</span>
+          <span>油耗核算</span>
         </div>
         <div className="analysis-grid">
           <div>
-            <span>高置信周期</span>
+            <span>可信周期</span>
             <strong>{highCount}</strong>
           </div>
           <div>
@@ -123,6 +125,28 @@ export function TrendTab({ records }: Props) {
           </div>
         </div>
         <p>{latest.odoMessage}</p>
+      </section>
+
+      <section className={`analysis-card trend-report-card report-tone-${report.tone}`}>
+        <div className="analysis-title">
+          <ClipboardList size={17} />
+          <span>周期总结</span>
+        </div>
+        <div className="report-headline">
+          <strong>{report.title}</strong>
+          <p>{report.summary}</p>
+        </div>
+        <div className="report-list">
+          {report.points.map((point) => (
+            <div key={point}>{point}</div>
+          ))}
+        </div>
+        <div className="report-next">
+          <span>建议</span>
+          {report.nextActions.map((action) => (
+            <p key={action}>{action}</p>
+          ))}
+        </div>
       </section>
 
       <section className="chart-card">
