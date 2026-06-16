@@ -1,230 +1,125 @@
-import { useState, useEffect } from 'react';
-import { loadInitialData, saveRecords } from './data';
-import { FuelRecord } from './types';
-import { OverviewTab } from './components/OverviewTab';
-import { TrendTab } from './components/TrendTab';
-import { AddRecordTab } from './components/AddRecordTab';
-import { HistoryModal } from './components/HistoryModal';
-import { RecordDetailModal } from './components/RecordDetailModal';
-import { SettingsTab } from './components/SettingsTab';
-import { Droplet, BarChart2, PlusCircle, Settings, Palette, Check } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useEffect, useMemo, useState } from 'react';
+import { Baby, Car, ChevronRight, Sparkles, Wrench } from 'lucide-react';
+import FuelApp from './apps/fuel/FuelApp';
+import BabyStoryApp from './apps/babyStory/BabyStoryApp';
 import { cn } from './lib/utils';
-import { checkOcrConfig } from './lib/ocr';
 
-const tabMeta = {
-  overview: { title: '概览', subtitle: '油耗监控' },
-  trend: { title: '趋势', subtitle: '油耗监控' },
-  add: { title: '记录加油', subtitle: '油耗监控' },
-  settings: { title: '我的', subtitle: '油耗监控' },
-} as const;
+type RoutePath = '/' | '/fuel' | '/baby-story';
 
-const themeOptions = [
-  { id: 'collectui', name: '柔雾' },
-  { id: 'classic', name: '经典暗色' },
-] as const;
+const normalizePath = (pathname: string): RoutePath => {
+  if (pathname.startsWith('/fuel')) return '/fuel';
+  if (pathname.startsWith('/baby-story')) return '/baby-story';
+  return '/';
+};
 
-type ThemeId = typeof themeOptions[number]['id'];
+const navigateTo = (path: RoutePath) => {
+  if (window.location.pathname !== path) {
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
+};
 
 export default function App() {
-  const [records, setRecords] = useState<FuelRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'trend' | 'add' | 'settings'>('overview');
-  const [showHistory, setShowHistory] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<FuelRecord | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [theme, setTheme] = useState<ThemeId>('collectui');
-  const [showThemePicker, setShowThemePicker] = useState(false);
-  const [ocrLaunchRequest, setOcrLaunchRequest] = useState(0);
-  const [ocrPrefillRequest, setOcrPrefillRequest] = useState(0);
-  const [ocrPrefillData, setOcrPrefillData] = useState<any>(null);
+  const [route, setRoute] = useState<RoutePath>(() => normalizePath(window.location.pathname));
 
   useEffect(() => {
-    setRecords(loadInitialData());
-    const savedTheme = localStorage.getItem('fuel_monitor_theme') as ThemeId | null;
-    if (savedTheme && themeOptions.some(option => option.id === savedTheme)) {
-      setTheme(savedTheme);
-    }
-    setIsLoaded(true);
+    const handlePopState = () => setRoute(normalizePath(window.location.pathname));
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('fuel_monitor_theme', theme);
-  }, [theme]);
+  if (route === '/fuel') {
+    return <FuelApp onBackToToolbox={() => navigateTo('/')} />;
+  }
 
-  useEffect(() => {
-    let hideTimer: number | undefined;
+  if (route === '/baby-story') {
+    return <BabyStoryApp onBackToToolbox={() => navigateTo('/')} />;
+  }
 
-    const handleScroll = () => {
-      const shell = document.querySelector('.app-shell');
-      if (!shell) return;
+  return <ToolboxHome />;
+}
 
-      shell.classList.add('is-scrolling');
-      window.clearTimeout(hideTimer);
-      hideTimer = window.setTimeout(() => {
-        shell.classList.remove('is-scrolling');
-      }, 900);
-    };
-
-    document.addEventListener('scroll', handleScroll, true);
-
-    return () => {
-      document.removeEventListener('scroll', handleScroll, true);
-      window.clearTimeout(hideTimer);
-    };
-  }, []);
-
-  const handleSave = (newRecord: FuelRecord) => {
-    const newRecords = [...records, newRecord];
-    setRecords(saveRecords(newRecords));
-    setActiveTab('overview');
-  };
-
-  const handleDelete = (id: string) => {
-    const newRecords = records.filter(r => r.id !== id);
-    setRecords(saveRecords(newRecords));
-  };
-
-  const handleReplaceRecords = (nextRecords: FuelRecord[]) => {
-    setRecords(saveRecords(nextRecords));
-  };
-
-  const handleGoRecognize = async () => {
-    const hasConfig = await checkOcrConfig();
-    if (!hasConfig) {
-      setActiveTab('settings');
-      return;
-    }
-    setActiveTab('add');
-    setOcrLaunchRequest(prev => prev + 1);
-  };
-
-  const currentTab = tabMeta[activeTab];
-
-  if (!isLoaded) return <div className="app-loading-shell bg-[#1a1a18]" />;
+function ToolboxHome() {
+  const tools = useMemo(
+    () => [
+      {
+        id: 'fuel',
+        title: '油耗监控',
+        subtitle: '记录加油、油耗趋势、费用分析',
+        description: '管理每次加油记录，查看油耗变化和用车成本。',
+        icon: Car,
+        path: '/fuel' as RoutePath,
+        tone: 'bg-[#e8eadf] text-[#5f6d58]',
+      },
+      {
+        id: 'baby-story',
+        title: '胎教故事助手',
+        subtitle: '生成胎教故事、声音采样、合成朗读',
+        description: '每天为宝宝写一篇柔软小故事，并用选择的声音朗读。',
+        icon: Baby,
+        path: '/baby-story' as RoutePath,
+        tone: 'bg-[#ead7ea] text-[#76506f]',
+      },
+    ],
+    [],
+  );
 
   return (
-    <div data-theme={theme} className="app-shell w-full flex flex-col bg-[#1a1a18] overflow-hidden max-w-md mx-auto relative shadow-2xl">
-      
-      {/* Header */}
-      <div className="app-header shrink-0 px-5 flex items-start justify-between gap-3">
-        <div>
-          <div className="text-xs font-medium text-[#6b7a99]">{currentTab.subtitle}</div>
-          <h1 className="mt-1 text-2xl font-medium text-[#e8ecf4] tracking-normal">
-            {currentTab.title}
-          </h1>
-        </div>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowThemePicker(prev => !prev)}
-            className="theme-trigger mt-1 grid place-items-center rounded-full border border-white/10 bg-[#0d0f14] text-[#e8ecf4] active:bg-white/5"
-            aria-label="切换主题"
-          >
-            <Palette size={18} />
-          </button>
-          <AnimatePresence>
-            {showThemePicker && (
-              <motion.div
-                initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                transition={{ duration: 0.16 }}
-                className="theme-menu absolute right-0 top-12 z-50 w-40 overflow-hidden rounded-xl border border-white/10 bg-[#1a1e2a] shadow-2xl"
+    <main className="soft-scrollbar h-dvh overflow-y-auto bg-[linear-gradient(180deg,#fffaf2_0%,#f3edf6_52%,#f8f1ea_100%)] px-5 pb-[calc(28px+env(safe-area-inset-bottom,0px))] pt-[calc(28px+env(safe-area-inset-top,0px))] text-[#403632]">
+      <div className="mx-auto flex min-h-[calc(100dvh-56px)] w-full max-w-md flex-col">
+        <header className="mb-7">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/75 bg-white/70 px-3 py-2 text-xs font-black text-[#8d7470] shadow-sm">
+            <Sparkles size={15} />
+            个人工具集 PWA
+          </div>
+          <h1 className="mt-4 text-3xl font-black tracking-normal">三秋工具箱</h1>
+          <p className="mt-3 max-w-sm text-sm font-bold leading-6 text-[#8b7471]">
+            一个入口放下日常小工具。当前包含油耗监控和胎教故事助手，后续新增工具只需要追加应用目录和首页卡片。
+          </p>
+        </header>
+
+        <section className="space-y-4">
+          {tools.map(tool => {
+            const Icon = tool.icon;
+            return (
+              <button
+                key={tool.id}
+                type="button"
+                onClick={() => navigateTo(tool.path)}
+                className="group w-full rounded-[28px] border border-white/80 bg-white/78 p-4 text-left shadow-[0_16px_36px_rgba(91,72,72,0.10)] backdrop-blur transition active:scale-[0.99]"
               >
-                {themeOptions.map(option => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => {
-                      setTheme(option.id);
-                      setShowThemePicker(false);
-                    }}
-                    className="theme-menu-item flex w-full items-center justify-between px-3 py-2.5 text-left text-sm text-[#e8ecf4] active:bg-white/5"
-                  >
-                    <span>{option.name}</span>
-                    {theme === option.id && <Check size={15} className="text-[#f5a623]" />}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                <div className="flex items-start gap-4">
+                  <div className={cn('grid h-14 w-14 shrink-0 place-items-center rounded-3xl', tool.tone)}>
+                    <Icon size={28} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h2 className="text-lg font-black">{tool.title}</h2>
+                        <p className="mt-1 text-xs font-black text-[#a38189]">{tool.subtitle}</p>
+                      </div>
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f5ede8] text-[#8b7471] transition group-active:translate-x-0.5">
+                        <ChevronRight size={18} />
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm font-semibold leading-6 text-[#7d6965]">{tool.description}</p>
+                    <span className="mt-4 inline-flex h-10 items-center rounded-2xl bg-[#6f536b] px-4 text-sm font-black text-white">
+                      进入{tool.title}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </section>
+
+        <footer className="mt-auto pt-8 text-center text-xs font-bold leading-6 text-[#aa918e]">
+          <div className="mx-auto inline-flex items-center gap-2 rounded-full bg-white/60 px-3 py-2">
+            <Wrench size={14} />
+            本地优先，无账号，无云同步
+          </div>
+        </footer>
       </div>
-
-      <div className="app-scroll flex-1 overflow-y-auto relative">
-        <AnimatePresence mode="wait">
-          {activeTab === 'overview' && (
-            <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <OverviewTab records={records} onRecordClick={setSelectedRecord} onGoAdd={() => setActiveTab('add')} onGoRecognize={handleGoRecognize} onGoTrend={() => setActiveTab('trend')} onOpenHistory={() => setShowHistory(true)} />
-            </motion.div>
-          )}
-          {activeTab === 'trend' && (
-            <motion.div key="trend" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <TrendTab records={records} />
-            </motion.div>
-          )}
-          {activeTab === 'add' && (
-            <motion.div key="add" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <AddRecordTab onSave={handleSave} onOpenHistory={() => setShowHistory(true)} onGoSettings={() => setActiveTab('settings')} ocrLaunchRequest={ocrLaunchRequest} ocrPrefillData={ocrPrefillData} ocrPrefillRequest={ocrPrefillRequest} />
-            </motion.div>
-          )}
-          {activeTab === 'settings' && (
-            <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <SettingsTab records={records} onRecordsChange={handleReplaceRecords} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Tab Bar */}
-      <div className="app-bottom-nav fixed bottom-0 left-1/2 bg-[#1a1a18]/95 backdrop-blur-xl border-t border-white/5 flex items-start justify-around z-40 pb-safe">
-        <button 
-          onClick={() => setActiveTab('overview')}
-          className={cn("app-nav-item flex flex-col items-center justify-start w-full h-full relative transition-colors", activeTab === 'overview' ? 'text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
-        >
-          <Droplet size={23} />
-          <span className="text-[11px] mt-0.5 font-medium">概览</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('trend')}
-          className={cn("app-nav-item flex flex-col items-center justify-start w-full h-full relative transition-colors", activeTab === 'trend' ? 'text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
-        >
-          <BarChart2 size={23} />
-          <span className="text-[11px] mt-0.5 font-medium">趋势</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('add')}
-          className={cn("app-nav-item flex flex-col items-center justify-start w-full h-full relative transition-colors", activeTab === 'add' ? 'text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
-        >
-          <PlusCircle size={25} />
-          <span className="text-[11px] mt-0.5 font-medium">记录</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('settings')}
-          className={cn("app-nav-item flex flex-col items-center justify-start w-full h-full relative transition-colors", activeTab === 'settings' ? 'text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
-        >
-          <Settings size={23} />
-          <span className="text-[11px] mt-0.5 font-medium">我的</span>
-        </button>
-      </div>
-
-      {/* Modals */}
-      <AnimatePresence>
-        {showHistory && (
-          <HistoryModal records={records} onClose={() => setShowHistory(false)} onDelete={handleDelete} onRecordClick={setSelectedRecord} />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {selectedRecord && (
-          <RecordDetailModal 
-            record={selectedRecord} 
-            allRecords={records} 
-            onClose={() => setSelectedRecord(null)} 
-          />
-        )}
-      </AnimatePresence>
-
-    </div>
+    </main>
   );
 }

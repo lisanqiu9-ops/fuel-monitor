@@ -11,6 +11,7 @@ import {
   FileJson,
   Info,
   MessageCircle,
+  PackageOpen,
   ScanLine,
   Shield,
   Trash2,
@@ -123,13 +124,14 @@ export default {
 interface Props {
   records: FuelRecord[];
   onRecordsChange: (records: FuelRecord[]) => void;
+  onBackToToolbox?: () => void;
 }
 
 type StatusState = { type: 'idle' | 'testing' | 'success' | 'error'; msg: string };
 type ImportMode = 'replace' | 'merge';
 type PanelId = 'ocr' | 'import' | 'security' | 'about' | null;
 
-export function SettingsTab({ records, onRecordsChange }: Props) {
+export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props) {
   const [workerUrl, setWorkerUrl] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [showGuide, setShowGuide] = useState(false);
@@ -434,6 +436,9 @@ export function SettingsTab({ records, onRecordsChange }: Props) {
       </AnimatePresence>
 
       <SettingsGroup title="关于">
+        {onBackToToolbox && (
+          <SettingsRow icon={PackageOpen} label="返回三秋工具箱" value="切换工具" onClick={onBackToToolbox} />
+        )}
         <SettingsRow icon={Info} label="关于 Web App" value="v0.1.0" onClick={() => openPanel('about')} />
         <SettingsRow icon={AlertTriangle} label="使用建议" value="先备份" onClick={() => openPanel('security')} />
       </SettingsGroup>

@@ -2076,3 +2076,52 @@ body {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+.soft-scrollbar {
+  --soft-scrollbar-size: 7px;
+  --soft-scrollbar-thumb: rgba(112, 85, 101, 0.2);
+  --soft-scrollbar-thumb-hover: rgba(112, 85, 101, 0.32);
+  --soft-scrollbar-thumb-active: rgba(112, 85, 101, 0.42);
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--soft-scrollbar-thumb) transparent;
+  scrollbar-gutter: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.soft-scrollbar::-webkit-scrollbar {
+  width: var(--soft-scrollbar-size);
+  height: var(--soft-scrollbar-size);
+}
+
+.soft-scrollbar::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.soft-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.soft-scrollbar::-webkit-scrollbar-thumb {
+  min-height: 44px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--soft-scrollbar-thumb);
+  background-clip: content-box;
+}
+
+.soft-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--soft-scrollbar-thumb-hover);
+  background-clip: content-box;
+}
+
+.soft-scrollbar::-webkit-scrollbar-thumb:active {
+  background: var(--soft-scrollbar-thumb-active);
+  background-clip: content-box;
+}
+
+.soft-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
