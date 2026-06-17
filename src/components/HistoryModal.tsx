@@ -85,6 +85,7 @@ export function HistoryModal({ records, onClose, onDelete, onRecordClick }: Prop
                   <button
                     type="button"
                     onClick={(event) => {
+                      event.preventDefault();
                       event.stopPropagation();
                       if (confirm(`确定删除 ${record.date} 的记录吗？`)) {
                         onDelete(record.id);

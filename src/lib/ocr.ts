@@ -247,49 +247,53 @@ export function parseOCRData(wordsResult: any[], existingResult: any = null) {
     }
     
     // 里程和续航
-    const kmValues: number[] = [];
+    const kmEntries: { value: number; line: string }[] = [];
     for (const line of lines) {
       // 过滤掉包含 /100, /h 的油耗和速度数据
       if (/\/(100|h|n)/i.test(line) || /100\s*k/i.test(line) || line.toLowerCase().includes('rpm')) continue;
       const match = line.match(/([0-9.]+)\s*k[rn|m]/i);
       if (match) {
-        kmValues.push(parseFloat(match[1]));
+        kmEntries.push({ value: parseFloat(match[1]), line });
       }
     }
     
-    kmValues.sort((a, b) => b - a); // 降序: 最大的可能是 ODO，中间的是行驶里程，最小的是剩余续航
+    kmEntries.sort((a, b) => b.value - a.value); // 降序: 最大的可能是 ODO，其次可能是加油后行驶里程/剩余续航
     
-    if (kmValues.length > 0) {
-      const odoCandidate = kmValues.find(k => k > 5000); // 一般总里程大于5000
+    if (kmEntries.length > 0) {
+      const odoCandidate = kmEntries.find(entry => entry.value > 5000); // 一般总里程大于5000
       if (odoCandidate) {
-        result.dashboardOdo = odoCandidate;
+        result.dashboardOdo = odoCandidate.value;
         confidence.dashboardOdo = 'high';
-        kmValues.splice(kmValues.indexOf(odoCandidate), 1);
-      } else if (kmValues[0] > 2000 && !result.dashboardOdo) {
-        result.dashboardOdo = kmValues[0];
+        kmEntries.splice(kmEntries.indexOf(odoCandidate), 1);
+      } else if (kmEntries[0].value > 2000 && !result.dashboardOdo) {
+        result.dashboardOdo = kmEntries[0].value;
         confidence.dashboardOdo = 'low';
-        kmValues.shift();
+        kmEntries.shift();
       }
     }
     
-    if (kmValues.length > 0) {
+    if (kmEntries.length > 0) {
         // 只有明确出现“上次/加油后”语义时，才自动填行驶里程，避免把剩余续航误当成行驶里程。
         if (isSinceRefuel && (!result.drivenKm || confidence.drivenKm !== 'high')) {
-            const drivenCandidate = kmValues.find(k => k > 5 && k < 2000); 
+            const drivenCandidate = kmEntries.find(entry => entry.value > 5 && entry.value < 2000); 
             if (drivenCandidate) {
-                result.drivenKm = drivenCandidate;
+                result.drivenKm = drivenCandidate.value;
                 confidence.drivenKm = 'high';
-                kmValues.splice(kmValues.indexOf(drivenCandidate), 1);
+                kmEntries.splice(kmEntries.indexOf(drivenCandidate), 1);
             }
         }
     }
     
-    if (kmValues.length > 0) {
-        // 再剩下的里面，如果有比较小的，大概率是续航
-        const rangeCandidate = Math.min(...kmValues);
+    if (kmEntries.length > 0) {
+        // “自启动/启动起”的 29km 这类短途里程不是剩余续航；多个候选时优先取更像续航的较大值。
+        const nonTripEntries = kmEntries.filter(entry => !/(自启动|启动起|启动后|trip)/i.test(entry.line));
+        const rangePool = (nonTripEntries.length > 0 ? nonTripEntries : kmEntries)
+            .map(entry => entry.value)
+            .filter(value => value >= 10 && value <= 1500);
+        const rangeCandidate = rangePool.length > 1 ? Math.max(...rangePool) : rangePool[0];
         if (!result.dashboardRange || rangeCandidate < (result.dashboardRange||9999)) {
             result.dashboardRange = rangeCandidate;
-            confidence.dashboardRange = 'low';
+            confidence.dashboardRange = nonTripEntries.length > 0 ? 'high' : 'low';
         }
     }
   }

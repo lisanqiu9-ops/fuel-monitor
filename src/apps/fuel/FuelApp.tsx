@@ -84,8 +84,8 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
   };
 
   const handleDelete = (id: string) => {
-    const newRecords = records.filter(r => r.id !== id);
-    setRecords(saveRecords(newRecords));
+    setRecords(prevRecords => saveRecords(prevRecords.filter(record => record.id !== id)));
+    setSelectedRecord(prevRecord => prevRecord?.id === id ? null : prevRecord);
   };
 
   const handleReplaceRecords = (nextRecords: FuelRecord[]) => {
