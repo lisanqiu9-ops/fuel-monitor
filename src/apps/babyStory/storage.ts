@@ -44,6 +44,7 @@ export const defaultVoiceRuntimeConfig: VoiceRuntimeConfig = {
   mockFallbackEnabled: true,
   targetModel: 'qwen3-tts-vc-2026-01-22',
   defaultRate: 0.85,
+  playbackRate: 0.85,
   defaultVolume: 50,
   defaultInstruction: '请用温柔、轻声、亲切、适合胎教睡前故事的语气朗读，语速稍慢，停顿自然。',
 };
@@ -104,6 +105,7 @@ export const saveVoiceRuntimeConfig = (config: VoiceRuntimeConfig) => {
     workerBaseUrl: config.workerBaseUrl.trim().replace(/\/+$/, ''),
     targetModel: defaultVoiceRuntimeConfig.targetModel,
     defaultRate: defaultVoiceRuntimeConfig.defaultRate,
+    playbackRate: Math.min(1.25, Math.max(0.7, Number.isFinite(config.playbackRate) ? config.playbackRate : defaultVoiceRuntimeConfig.playbackRate)),
     defaultVolume: defaultVoiceRuntimeConfig.defaultVolume,
     defaultInstruction: defaultVoiceRuntimeConfig.defaultInstruction,
   };

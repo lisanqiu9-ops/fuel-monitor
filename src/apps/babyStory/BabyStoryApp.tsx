@@ -79,6 +79,7 @@ const formatDate = (value: string) =>
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 const formatPregnancyAge = (week: number, day: number) => day > 0 ? `孕 ${week} 周 + ${day} 天` : `孕 ${week} 周`;
 const localDayTime = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+const playbackRateOptions = [0.75, 0.85, 1, 1.15] as const;
 
 export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
   const [settings, setSettings] = useState<BabySettings>(defaultSettings);
@@ -282,7 +283,7 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
               }}
             />
           )}
-          {activeTab === 'player' && <PlayerPage story={selectedStory} voices={voices} selectedVoiceId={selectedVoiceId} audioState={audioState} error={error} onVoiceSelect={handleVoiceSelect} onSynthesize={() => handleSynthesize(selectedStory)} onGoGenerate={() => setActiveTab('generate')} />}
+          {activeTab === 'player' && <PlayerPage story={selectedStory} voices={voices} selectedVoiceId={selectedVoiceId} voiceConfig={voiceConfig} audioState={audioState} error={error} onVoiceSelect={handleVoiceSelect} onVoiceConfigChange={persistVoiceConfig} onSynthesize={() => handleSynthesize(selectedStory)} onGoGenerate={() => setActiveTab('generate')} />}
           {activeTab === 'history' && (
             <HistoryPage
               stories={stories}
@@ -478,13 +479,19 @@ function OptionGroup({ title, children }: { title: string; children: ReactNode }
   return <div className="mt-4"><p className="mb-2 text-xs font-black text-[#a08182]">{title}</p><div className="flex flex-wrap gap-2">{children}</div></div>;
 }
 
-function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; selectedVoiceId: string; audioState: LoadState; error: string; onVoiceSelect: (id: string) => void; onSynthesize: () => void; onGoGenerate: () => void }) {
+function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; selectedVoiceId: string; voiceConfig: VoiceRuntimeConfig; audioState: LoadState; error: string; onVoiceSelect: (id: string) => void; onVoiceConfigChange: (config: VoiceRuntimeConfig) => void; onSynthesize: () => void; onGoGenerate: () => void }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   useEffect(() => { setProgress(0); setPlaying(false); }, [props.story?.audio?.id]);
+  const playbackRate = props.voiceConfig.playbackRate ?? 0.85;
   const applyPlaybackRate = () => {
-    if (audioRef.current) audioRef.current.playbackRate = 0.86;
+    if (audioRef.current) audioRef.current.playbackRate = playbackRate;
+  };
+  useEffect(() => { applyPlaybackRate(); }, [playbackRate]);
+  const handlePlaybackRateChange = (nextRate: number) => {
+    props.onVoiceConfigChange({ ...props.voiceConfig, playbackRate: nextRate });
+    if (audioRef.current) audioRef.current.playbackRate = nextRate;
   };
   if (!props.story) return <EmptyState text="还没有故事。先生成一篇胎教故事，再来这里播放。" action="去生成" onAction={props.onGoGenerate} />;
   const audio = props.story.audio;
@@ -517,11 +524,29 @@ function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; select
             </button>
           ))}
         </div>
+        <div className="mt-5">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-black">播放倍速</h3>
+            <span className="text-xs font-black text-[#9b7b80]">{playbackRate}x</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {playbackRateOptions.map(rate => (
+              <button
+                key={rate}
+                type="button"
+                onClick={() => handlePlaybackRateChange(rate)}
+                className={cn('h-10 rounded-2xl border text-xs font-black transition', playbackRate === rate ? 'border-[#8c6380] bg-[#ead7ea] text-[#6f536b]' : 'border-[#eadcda] bg-[#fffaf5] text-[#8c7470]')}
+              >
+                {rate}x
+              </button>
+            ))}
+          </div>
+        </div>
       </Card>
       {audio ? (
         <Card>
           <audio ref={audioRef} src={audioSrc} onLoadedMetadata={applyPlaybackRate} onPlay={() => { applyPlaybackRate(); setPlaying(true); }} onPause={() => setPlaying(false)} onTimeUpdate={event => setProgress((event.currentTarget.currentTime / (event.currentTarget.duration || 1)) * 100)} onEnded={() => setPlaying(false)} />
-          <div className="flex items-center justify-between text-xs font-black text-[#9b7b80]"><span>{audio.voiceName}</span><span>{audio.provider === 'bailian' ? '百炼真实音频 · 0.86x' : `${Math.round(audio.duration || 0)} 秒 · 0.86x`}</span></div>
+          <div className="flex items-center justify-between text-xs font-black text-[#9b7b80]"><span>{audio.voiceName}</span><span>{audio.provider === 'bailian' ? `百炼真实音频 · ${playbackRate}x` : `${Math.round(audio.duration || 0)} 秒 · ${playbackRate}x`}</span></div>
           {audio.provider === 'bailian' && <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">百炼真实音频{audio.model ? ` · ${audio.model}` : ''}{audio.expiresAt ? ` · 过期时间 ${new Date(audio.expiresAt * 1000).toLocaleString()}` : ''}</p>}
           {isExpired && <p className="mt-3 rounded-2xl bg-[#fff0f0] p-3 text-xs font-black leading-5 text-[#a9525e]">这段百炼音频 URL 已过期，请重新生成朗读。</p>}
           <input type="range" min={0} max={100} value={progress} onChange={event => { const next = Number(event.target.value); setProgress(next); if (audioRef.current) audioRef.current.currentTime = ((audioRef.current.duration || audio.duration || 1) * next) / 100; }} className="mt-5 w-full accent-[#76506f]" />

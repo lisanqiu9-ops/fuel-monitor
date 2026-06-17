@@ -99,6 +99,7 @@ export interface VoiceRuntimeConfig {
   mockFallbackEnabled: boolean;
   targetModel: string;
   defaultRate: number;
+  playbackRate: number;
   defaultVolume: number;
   defaultInstruction: string;
 }
