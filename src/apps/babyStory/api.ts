@@ -121,12 +121,6 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
         body: JSON.stringify({
           text: input.text,
           voiceKey: input.voice.voiceKey,
-          targetModel: input.voice.targetModel || input.voiceConfig.targetModel,
-          rate: input.voiceConfig.defaultRate,
-          pitch: 1.0,
-          volume: input.voiceConfig.defaultVolume,
-          format: 'mp3',
-          instruction: input.voiceConfig.defaultInstruction,
         }),
       });
       if (!response.ok) throw new Error(await readApiError(response));
