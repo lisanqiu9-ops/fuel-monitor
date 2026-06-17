@@ -12,7 +12,6 @@ import {
   Pause,
   Pencil,
   Play,
-  Plus,
   RotateCcw,
   Save,
   Settings,
@@ -231,9 +230,18 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
             <HomePage
               pregnancyText={pregnancyText}
               recommendedTheme={recommendedTheme}
+              recentStory={stories[0]}
               recentAudio={recentAudio}
               onGenerate={() => handleGenerate(recommendedTheme)}
-              onGoGenerate={() => setActiveTab('generate')}
+              onGoEditStory={story => {
+                setSelectedStoryId(story.id);
+                setDraft(story);
+                setTheme(story.theme);
+                setLength(story.length);
+                setStyle(story.style);
+                setTone(story.tone);
+                setActiveTab('generate');
+              }}
               onGoPlayer={() => setActiveTab('player')}
               onGoHistory={() => setActiveTab('history')}
             />
@@ -334,9 +342,10 @@ function PillButton<T extends string>({ value, active, label, onClick }: { value
 function HomePage(props: {
   pregnancyText: string;
   recommendedTheme: string;
+  recentStory?: StoryRecord;
   recentAudio?: AudioRecord;
   onGenerate: () => void;
-  onGoGenerate: () => void;
+  onGoEditStory: (story: StoryRecord) => void;
   onGoPlayer: () => void;
   onGoHistory: () => void;
 }) {
@@ -360,12 +369,25 @@ function HomePage(props: {
           </div>
           <Sparkles className="mt-1 text-[#d7a8c9]" />
         </div>
-        <button type="button" onClick={props.onGenerate} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#6f536b] text-sm font-black text-white"><Wand2 size={18} /> 生成今日故事</button>
+        <button type="button" onClick={props.onGenerate} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#6f536b] text-sm font-black text-white"><Wand2 size={18} /> 按默认偏好生成</button>
       </Card>
-      <div className="grid grid-cols-2 gap-3">
-        <button type="button" onClick={props.onGoGenerate} className="rounded-[24px] bg-[#efe1ef] p-4 text-left text-[#73526c]"><Plus size={20} /><span className="mt-3 block text-sm font-black">新故事</span></button>
-        <button type="button" onClick={props.onGoHistory} className="rounded-[24px] bg-[#e7eadf] p-4 text-left text-[#66725e]"><BookOpen size={20} /><span className="mt-3 block text-sm font-black">历史</span></button>
-      </div>
+      <Card>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-black">最近故事</h3>
+          <button type="button" onClick={props.onGoHistory} className="text-xs font-black text-[#8c6380]">全部历史</button>
+        </div>
+        {props.recentStory ? (
+          <button type="button" onClick={() => props.onGoEditStory(props.recentStory!)} className="flex w-full items-start gap-3 rounded-2xl bg-[#fffaf5] p-3 text-left">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f1e3f0] text-[#76506f]"><BookOpen size={18} /></div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-black">{props.recentStory.title}</p>
+              <p className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-[#9d8582]">{props.recentStory.body}</p>
+              <p className="mt-2 text-[11px] font-black text-[#8c6380]">{props.recentStory.audio ? '已有朗读音频' : '还没有生成朗读'}</p>
+            </div>
+            <ChevronRight size={18} className="mt-2 shrink-0 text-[#b79b9a]" />
+          </button>
+        ) : <EmptyState text="还没有保存的故事。可以先按默认偏好生成一篇今日故事。" />}
+      </Card>
       <Card>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-black">最近播放</h3>
@@ -465,14 +487,23 @@ function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; select
     <div className="space-y-4">
       <Card className="text-center"><div className="mx-auto grid h-24 w-24 place-items-center rounded-full bg-[#ead7ea] text-[#76506f]"><Heart size={42} fill="currentColor" /></div><h2 className="mt-5 text-xl font-black">{props.story.title}</h2><p className="mt-2 text-sm font-bold text-[#9b7b80]">{lengthLabels[props.story.length]} · {toneLabels[props.story.tone]}</p></Card>
       <Card>
-        <div className="flex items-center justify-between gap-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <h3 className="font-black">朗读声音</h3>
-            <p className="mt-1 text-xs font-bold text-[#9b7b80]">生成朗读前选择爸爸或妈妈。</p>
+            <p className="mt-1 text-xs font-bold text-[#9b7b80]">切换声音后，需要重新生成朗读音频。</p>
           </div>
-          <select value={props.selectedVoiceId} onChange={event => props.onVoiceSelect(event.target.value)} className="min-w-[128px] rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-3 py-2 text-sm font-black outline-none">
-            {props.voices.map(voice => <option key={voice.id} value={voice.id}>{voice.name}</option>)}
-          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {props.voices.map(voice => (
+            <button
+              key={voice.id}
+              type="button"
+              onClick={() => props.onVoiceSelect(voice.id)}
+              className={cn('h-12 rounded-2xl border text-sm font-black transition', props.selectedVoiceId === voice.id ? 'border-[#8c6380] bg-[#ead7ea] text-[#6f536b]' : 'border-[#eadcda] bg-[#fffaf5] text-[#8c7470]')}
+            >
+              {voice.name}
+            </button>
+          ))}
         </div>
       </Card>
       {audio ? (
@@ -484,7 +515,16 @@ function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; select
           <input type="range" min={0} max={100} value={progress} onChange={event => { const next = Number(event.target.value); setProgress(next); if (audioRef.current) audioRef.current.currentTime = ((audioRef.current.duration || audio.duration || 1) * next) / 100; }} className="mt-5 w-full accent-[#76506f]" />
           <div className="mt-5 flex items-center justify-center gap-3"><button type="button" onClick={toggle} disabled={isExpired || !audioSrc} className="grid h-16 w-16 place-items-center rounded-full bg-[#6f536b] text-white disabled:opacity-50">{playing ? <Pause size={28} /> : <Play size={28} className="translate-x-0.5" />}</button><button type="button" onClick={props.onSynthesize} disabled={props.audioState === 'loading'} className="grid h-12 w-12 place-items-center rounded-full bg-[#efe5e1] text-[#735f5a] disabled:opacity-60" aria-label="重新生成音频">{props.audioState === 'loading' ? <Loader2 className="animate-spin" size={18} /> : <RotateCcw size={18} />}</button></div>
         </Card>
-      ) : <EmptyState text="这篇故事还没有朗读音频。选择声音后生成朗读。" action={props.audioState === 'loading' ? '正在生成' : '生成朗读'} onAction={props.audioState === 'loading' ? undefined : props.onSynthesize} />}
+      ) : (
+        <Card className="text-center">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f1e3f0] text-[#76506f]"><Volume2 size={24} /></div>
+          <p className="mt-4 text-sm font-bold leading-6 text-[#8c7470]">这篇故事还没有朗读音频。</p>
+          <button type="button" disabled={props.audioState === 'loading'} onClick={props.onSynthesize} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#6f536b] text-sm font-black text-white disabled:opacity-60">
+            {props.audioState === 'loading' ? <Loader2 className="animate-spin" size={18} /> : <Volume2 size={18} />}
+            {props.audioState === 'loading' ? '正在生成朗读' : '生成朗读'}
+          </button>
+        </Card>
+      )}
       {props.audioState === 'error' && <ErrorState text={props.error} />}
     </div>
   );
@@ -492,7 +532,34 @@ function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; select
 
 function HistoryPage(props: { stories: StoryRecord[]; onPlay: (story: StoryRecord) => void; onEdit: (story: StoryRecord) => void; onDelete: (id: string) => void }) {
   if (!props.stories.length) return <EmptyState text="历史里还没有故事。每天写一篇，宝宝会慢慢拥有自己的小书架。" />;
-  return <div className="space-y-3">{props.stories.map(story => <div key={story.id}><Card><div className="flex items-start gap-3"><div className="grid h-11 w-11 place-items-center rounded-full bg-[#f1e3f0] text-[#76506f]"><CalendarDays size={19} /></div><div className="min-w-0 flex-1"><p className="text-xs font-black text-[#a08182]">{formatDate(story.createdAt)}</p><h3 className="mt-1 font-black">{story.title}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-[#8c7470]">{story.body}</p></div></div><div className="mt-4 grid grid-cols-3 gap-2"><button type="button" onClick={() => props.onPlay(story)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#6f536b] text-xs font-black text-white"><Play size={15} />播放</button><button type="button" onClick={() => props.onEdit(story)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#efe5e1] text-xs font-black text-[#735f5a]"><Pencil size={15} />编辑</button><button type="button" onClick={() => props.onDelete(story.id)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#fff0f0] text-xs font-black text-[#a9525e]"><Trash2 size={15} />删除</button></div></Card></div>)}</div>;
+  return (
+    <div className="space-y-3">
+      {props.stories.map(story => (
+        <div key={story.id}>
+          <Card>
+            <div className="flex items-start gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-full bg-[#f1e3f0] text-[#76506f]"><CalendarDays size={19} /></div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-[#a08182]">{formatDate(story.createdAt)}</p>
+                    <h3 className="mt-1 font-black">{story.title}</h3>
+                  </div>
+                  <span className={cn('shrink-0 rounded-full px-2 py-1 text-[10px] font-black', story.audio ? 'bg-[#f1e3f0] text-[#76506f]' : 'bg-[#fff4df] text-[#8c6d4d]')}>{story.audio ? '已有朗读' : '未朗读'}</span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#8c7470]">{story.body}</p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <button type="button" onClick={() => props.onPlay(story)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#6f536b] text-xs font-black text-white"><Play size={15} />播放</button>
+              <button type="button" onClick={() => props.onEdit(story)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#efe5e1] text-xs font-black text-[#735f5a]"><Pencil size={15} />编辑</button>
+              <button type="button" onClick={() => props.onDelete(story.id)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#fff0f0] text-xs font-black text-[#a9525e]"><Trash2 size={15} />删除</button>
+            </div>
+          </Card>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntimeConfig; onSettingsChange: (settings: BabySettings) => void; onVoiceConfigChange: (config: VoiceRuntimeConfig) => void; onClear: () => void; onBackToToolbox?: () => void }) {
