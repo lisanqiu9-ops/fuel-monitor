@@ -3,12 +3,16 @@ main = "src/index.ts"
 compatibility_date = "2026-06-16"
 
 [vars]
-BAILIAN_TARGET_MODEL = "cosyvoice-v3.5-flash"
+DASHSCOPE_TTS_MODEL = "qwen3-tts-vc-2026-01-22"
 CORS_ALLOWED_ORIGIN = "https://lisanqiu9-ops.github.io"
 # Optional non-secret JSON map. Prefer Secrets if you treat voice IDs as sensitive.
-# BAILIAN_VOICE_MAP = "{\"papa\":\"your-papa-voice-id\",\"mama\":\"your-mama-voice-id\"}"
+# BAILIAN_VOICE_MAP = "{\"papa\":\"qwen-tts-vc-bailian-voice-your-papa\",\"mama\":\"qwen-tts-vc-bailian-voice-your-mama\"}"
 
-# Configure DASHSCOPE_API_KEY as a Cloudflare Worker Secret, not in this file:
+# Configure these as Cloudflare Worker Secrets, not in this file:
 # wrangler secret put DASHSCOPE_API_KEY
+# wrangler secret put DASHSCOPE_TTS_VOICE_PAPA
+# wrangler secret put DASHSCOPE_TTS_VOICE_MAMA
+#
+# Legacy aliases are still supported by the Worker:
 # wrangler secret put BAILIAN_VOICE_PAPA
 # wrangler secret put BAILIAN_VOICE_MAMA

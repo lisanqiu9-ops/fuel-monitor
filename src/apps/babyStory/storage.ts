@@ -66,7 +66,7 @@ export const defaultVoiceRuntimeConfig: VoiceRuntimeConfig = {
   workerBaseUrl: '',
   realVoiceEnabled: false,
   mockFallbackEnabled: true,
-  targetModel: 'cosyvoice-v3.5-flash',
+  targetModel: 'qwen3-tts-vc-2026-01-22',
   defaultRate: 0.85,
   defaultVolume: 50,
   defaultInstruction: '请用温柔、轻声、亲切、适合胎教睡前故事的语气朗读，语速稍慢，停顿自然。',
