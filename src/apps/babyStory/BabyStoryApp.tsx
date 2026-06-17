@@ -80,6 +80,7 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 const formatPregnancyAge = (week: number, day: number) => day > 0 ? `孕 ${week} 周 + ${day} 天` : `孕 ${week} 周`;
 const localDayTime = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 const playbackRateOptions = [0.75, 0.85, 1, 1.15] as const;
+const formatPlaybackRate = (rate: number) => `${rate.toFixed(2).replace(/\.?0+$/, '')}x`;
 
 export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
   const [settings, setSettings] = useState<BabySettings>(defaultSettings);
@@ -490,8 +491,9 @@ function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; select
   };
   useEffect(() => { applyPlaybackRate(); }, [playbackRate]);
   const handlePlaybackRateChange = (nextRate: number) => {
-    props.onVoiceConfigChange({ ...props.voiceConfig, playbackRate: nextRate });
-    if (audioRef.current) audioRef.current.playbackRate = nextRate;
+    const normalizedRate = Math.round(clamp(nextRate, 0.7, 1.25) * 100) / 100;
+    props.onVoiceConfigChange({ ...props.voiceConfig, playbackRate: normalizedRate });
+    if (audioRef.current) audioRef.current.playbackRate = normalizedRate;
   };
   if (!props.story) return <EmptyState text="还没有故事。先生成一篇胎教故事，再来这里播放。" action="去生成" onAction={props.onGoGenerate} />;
   const audio = props.story.audio;
@@ -527,17 +529,32 @@ function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; select
         <div className="mt-5">
           <div className="mb-2 flex items-center justify-between gap-3">
             <h3 className="text-sm font-black">播放倍速</h3>
-            <span className="text-xs font-black text-[#9b7b80]">{playbackRate}x</span>
+            <span className="text-xs font-black text-[#9b7b80]">{formatPlaybackRate(playbackRate)}</span>
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <input
+            type="range"
+            min={0.7}
+            max={1.25}
+            step={0.01}
+            value={playbackRate}
+            onChange={event => handlePlaybackRateChange(Number(event.target.value))}
+            className="w-full accent-[#76506f]"
+            aria-label="播放倍速"
+          />
+          <div className="mt-1 flex items-center justify-between text-[10px] font-black text-[#b69a99]">
+            <span>0.70x</span>
+            <span>自由调节</span>
+            <span>1.25x</span>
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-2">
             {playbackRateOptions.map(rate => (
               <button
                 key={rate}
                 type="button"
                 onClick={() => handlePlaybackRateChange(rate)}
-                className={cn('h-10 rounded-2xl border text-xs font-black transition', playbackRate === rate ? 'border-[#8c6380] bg-[#ead7ea] text-[#6f536b]' : 'border-[#eadcda] bg-[#fffaf5] text-[#8c7470]')}
+                className={cn('h-10 rounded-2xl border text-xs font-black transition', Math.abs(playbackRate - rate) < 0.005 ? 'border-[#8c6380] bg-[#ead7ea] text-[#6f536b]' : 'border-[#eadcda] bg-[#fffaf5] text-[#8c7470]')}
               >
-                {rate}x
+                {formatPlaybackRate(rate)}
               </button>
             ))}
           </div>
@@ -546,7 +563,7 @@ function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; select
       {audio ? (
         <Card>
           <audio ref={audioRef} src={audioSrc} onLoadedMetadata={applyPlaybackRate} onPlay={() => { applyPlaybackRate(); setPlaying(true); }} onPause={() => setPlaying(false)} onTimeUpdate={event => setProgress((event.currentTarget.currentTime / (event.currentTarget.duration || 1)) * 100)} onEnded={() => setPlaying(false)} />
-          <div className="flex items-center justify-between text-xs font-black text-[#9b7b80]"><span>{audio.voiceName}</span><span>{audio.provider === 'bailian' ? `百炼真实音频 · ${playbackRate}x` : `${Math.round(audio.duration || 0)} 秒 · ${playbackRate}x`}</span></div>
+          <div className="flex items-center justify-between text-xs font-black text-[#9b7b80]"><span>{audio.voiceName}</span><span>{audio.provider === 'bailian' ? `百炼真实音频 · ${formatPlaybackRate(playbackRate)}` : `${Math.round(audio.duration || 0)} 秒 · ${formatPlaybackRate(playbackRate)}`}</span></div>
           {audio.provider === 'bailian' && <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">百炼真实音频{audio.model ? ` · ${audio.model}` : ''}{audio.expiresAt ? ` · 过期时间 ${new Date(audio.expiresAt * 1000).toLocaleString()}` : ''}</p>}
           {isExpired && <p className="mt-3 rounded-2xl bg-[#fff0f0] p-3 text-xs font-black leading-5 text-[#a9525e]">这段百炼音频 URL 已过期，请重新生成朗读。</p>}
           <input type="range" min={0} max={100} value={progress} onChange={event => { const next = Number(event.target.value); setProgress(next); if (audioRef.current) audioRef.current.currentTime = ((audioRef.current.duration || audio.duration || 1) * next) / 100; }} className="mt-5 w-full accent-[#76506f]" />
