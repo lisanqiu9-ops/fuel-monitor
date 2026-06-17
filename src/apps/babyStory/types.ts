@@ -30,6 +30,7 @@ export interface VoiceProfile {
   createdAt: string;
   provider?: VoiceProvider;
   voiceId?: string;
+  voiceKey?: string;
   targetModel?: string;
   // Legacy-only fields. New Cloudflare Worker flow must not save raw samples or long-lived sample URLs.
   sampleUrl?: string;
@@ -88,6 +89,7 @@ export interface SynthesizeResult {
   provider?: VoiceProvider;
   model?: string;
   voiceId?: string;
+  voiceKey?: string;
 }
 
 export interface VoiceRuntimeConfig {

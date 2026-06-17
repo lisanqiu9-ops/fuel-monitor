@@ -7,6 +7,31 @@ import { AnimatePresence, motion } from 'motion/react';
 import { checkOcrConfig, compressImage, callBaiduOCR, parseOCRData } from '../lib/ocr';
 import { OcrConfirmModal } from './OcrConfirmModal';
 
+const formatFuelRecordNote = (record: FuelRecord) => [
+  `加油记录 ${record.date}`,
+  `加油量：${record.fuelLiters} L`,
+  `单价：${record.pricePerLiter} 元/L`,
+  `总价：${record.totalCost} 元`,
+  record.fuelType ? `油号：${record.fuelType}` : '',
+  record.drivenKm ? `行驶里程：${record.drivenKm} km` : '',
+  record.actualFuelPer100 ? `实际油耗：${record.actualFuelPer100} L/100km` : '',
+  record.dashboardFuelPer100 ? `表显油耗：${record.dashboardFuelPer100} L/100km` : '',
+  record.dashboardOdo ? `总里程：${record.dashboardOdo} km` : '',
+  record.dashboardRange ? `剩余续航：${record.dashboardRange} km` : '',
+].filter(Boolean).join('\n');
+
+const shareFuelRecordNote = async (record: FuelRecord) => {
+  if (!navigator.share) return;
+  try {
+    await navigator.share({
+      title: `加油记录 ${record.date}`,
+      text: formatFuelRecordNote(record),
+    });
+  } catch {
+    // User cancelled the share sheet or the target app rejected the text.
+  }
+};
+
 interface Props {
   onSave: (record: FuelRecord) => void;
   onOpenHistory: () => void;
@@ -178,8 +203,42 @@ export function AddRecordTab({
 
   const handleOcrConfirm = (data: any) => {
     applyOcrData(data);
-    
+
+    const recordDate = data.date || date;
+    const liters = Number(data.fuelLiters);
+    const price = Number(data.unitPrice);
+    const cost = Number(data.totalCost || (Number.isFinite(liters) && Number.isFinite(price) ? liters * price : NaN));
+
+    if (!recordDate || !Number.isFinite(liters) || liters <= 0 || !Number.isFinite(price) || price <= 0 || !Number.isFinite(cost) || cost <= 0) {
+      setOcrResult(null);
+      alert('识别结果已填入表单，但缺少加油量、单价或总价，请补齐后点“保存记录”。');
+      return;
+    }
+
+    const dKm = data.drivenKm ? Number(data.drivenKm) : null;
+    const actualFuelP100 = dKm && dKm > 0 ? Number(((liters / dKm) * 100).toFixed(2)) : null;
+    const costPKm = dKm && dKm > 0 ? Number((cost / dKm).toFixed(3)) : null;
+
+    const newRecord: FuelRecord = {
+      id: uuidv4(),
+      date: recordDate,
+      fuelLiters: liters,
+      pricePerLiter: price,
+      totalCost: Number(cost.toFixed(2)),
+      drivenKm: dKm,
+      actualFuelPer100: actualFuelP100,
+      costPerKm: costPKm,
+      fuelType: data.fuelType || null,
+      dashboardOdo: data.dashboardOdo ? Number(data.dashboardOdo) : null,
+      dashboardAvgSpeed: data.dashboardAvgSpeed ? Number(data.dashboardAvgSpeed) : null,
+      dashboardDriveHours: data.dashboardDriveHours ? String(data.dashboardDriveHours) : null,
+      dashboardFuelPer100: data.dashboardFuelPer100 ? Number(data.dashboardFuelPer100) : null,
+      dashboardRange: data.dashboardRange ? Number(data.dashboardRange) : null,
+    };
+
+    onSave(newRecord);
     setOcrResult(null);
+    shareFuelRecordNote(newRecord);
   };
 
   // Auto calculate total cost

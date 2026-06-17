@@ -1,4 +1,4 @@
-import { GenerateStoryInput, SynthesizeInput, SynthesizeResult, StoryDraft, VoiceProfile } from './types';
+import { GenerateStoryInput, SynthesizeInput, SynthesizeResult, StoryDraft } from './types';
 
 const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
 
@@ -10,30 +10,11 @@ const styleScene = {
   poem: ['一封写给春天的信', '花瓣里的小梦', '晚风经过的小院'],
 } as const;
 
-const lengthParagraphs = {
-  short: 4,
-  medium: 7,
-  long: 10,
-};
-
-const toneWords = {
-  soft: '轻轻地',
-  happy: '微笑着',
-  sleepy: '慢慢地',
-};
+const lengthParagraphs = { short: 4, medium: 7, long: 10 };
+const toneWords = { soft: '轻轻地', happy: '微笑着', sleepy: '慢慢地' };
 
 export async function generateStory(input: GenerateStoryInput): Promise<StoryDraft> {
-  if (import.meta.env.VITE_USE_REAL_STORY_API === 'true') {
-    const response = await fetch('/api/story/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    if (!response.ok) throw new Error('故事生成服务暂时不可用');
-    return response.json();
-  }
-
-  await wait(850);
+  await wait(650);
   const scenes = styleScene[input.style];
   const paragraphs = Array.from({ length: lengthParagraphs[input.length] }, (_, index) => {
     const scene = scenes[index % scenes.length];
@@ -91,7 +72,7 @@ const blobToDataUrl = (blob: Blob) =>
   });
 
 const mockSynthesizeSpeech = async (input: SynthesizeInput): Promise<SynthesizeResult> => {
-  await wait(700);
+  await wait(500);
   const sampleRate = 22050;
   const duration = Math.min(48, Math.max(12, Math.round(input.text.length / 32)));
   const samples = new Float32Array(sampleRate * duration);
@@ -103,16 +84,14 @@ const mockSynthesizeSpeech = async (input: SynthesizeInput): Promise<SynthesizeR
     const phrase = Math.floor(t / 1.4);
     const envelope = Math.sin(Math.PI * ((t % 1.4) / 1.4));
     const freq = base + toneBump + (phrase % 5) * 12;
-    const carrier = Math.sin(2 * Math.PI * freq * t) * 0.18;
-    const overtone = Math.sin(2 * Math.PI * (freq * 1.5) * t) * 0.06;
-    samples[i] = (carrier + overtone) * envelope;
+    samples[i] = (Math.sin(2 * Math.PI * freq * t) * 0.18 + Math.sin(2 * Math.PI * (freq * 1.5) * t) * 0.06) * envelope;
   }
 
   return {
     dataUrl: await blobToDataUrl(encodeWav(samples, sampleRate)),
     duration,
     provider: 'mock',
-    voiceId: input.voice.id,
+    voiceKey: input.voice.voiceKey || input.voice.id,
   };
 };
 
@@ -132,7 +111,7 @@ const joinWorkerUrl = (baseUrl: string, pathname: string) => {
 };
 
 export async function synthesizeSpeech(input: SynthesizeInput): Promise<SynthesizeResult> {
-  const shouldUseWorker = input.voiceConfig.realVoiceEnabled && input.voice.provider === 'bailian' && input.voice.voiceId;
+  const shouldUseWorker = input.voiceConfig.realVoiceEnabled && input.voice.provider === 'bailian' && input.voice.voiceKey;
 
   if (shouldUseWorker) {
     try {
@@ -141,7 +120,7 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: input.text,
-          voiceId: input.voice.voiceId,
+          voiceKey: input.voice.voiceKey,
           targetModel: input.voice.targetModel || input.voiceConfig.targetModel,
           rate: input.voiceConfig.defaultRate,
           pitch: 1.0,
@@ -153,33 +132,11 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
       if (!response.ok) throw new Error(await readApiError(response));
       return response.json();
     } catch (error) {
-      if (input.voiceConfig.mockFallbackEnabled) {
-        return mockSynthesizeSpeech(input);
-      }
+      if (input.voiceConfig.mockFallbackEnabled) return mockSynthesizeSpeech(input);
       throw error;
     }
   }
 
-  if (input.voiceConfig.mockFallbackEnabled) {
-    return mockSynthesizeSpeech(input);
-  }
-
-  throw new Error('当前未启用 mock 兜底。请在设置页配置 Worker Base URL 并启用真实语音，或打开 mock 兜底。');
-}
-
-export function createManualBailianVoice(input: {
-  name: string;
-  voiceId: string;
-  targetModel: string;
-}): VoiceProfile {
-  return {
-    id: `voice-${Date.now()}`,
-    name: input.name,
-    kind: 'custom',
-    provider: 'bailian',
-    voiceId: input.voiceId,
-    targetModel: input.targetModel,
-    description: `百炼音色 · ${input.targetModel}`,
-    createdAt: new Date().toISOString(),
-  };
+  if (input.voiceConfig.mockFallbackEnabled) return mockSynthesizeSpeech(input);
+  throw new Error('当前未启用 mock 兜底。请配置 Worker 或打开 mock 兜底。');
 }

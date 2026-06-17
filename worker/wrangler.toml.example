@@ -4,7 +4,11 @@ compatibility_date = "2026-06-16"
 
 [vars]
 BAILIAN_TARGET_MODEL = "cosyvoice-v3.5-flash"
-CORS_ALLOWED_ORIGIN = "http://127.0.0.1:3001"
+CORS_ALLOWED_ORIGIN = "https://lisanqiu9-ops.github.io"
+# Optional non-secret JSON map. Prefer Secrets if you treat voice IDs as sensitive.
+# BAILIAN_VOICE_MAP = "{\"papa\":\"your-papa-voice-id\",\"mama\":\"your-mama-voice-id\"}"
 
 # Configure DASHSCOPE_API_KEY as a Cloudflare Worker Secret, not in this file:
 # wrangler secret put DASHSCOPE_API_KEY
+# wrangler secret put BAILIAN_VOICE_PAPA
+# wrangler secret put BAILIAN_VOICE_MAMA

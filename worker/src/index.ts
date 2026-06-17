@@ -2,6 +2,9 @@ interface Env {
   DASHSCOPE_API_KEY: string;
   BAILIAN_TARGET_MODEL?: string;
   CORS_ALLOWED_ORIGIN?: string;
+  BAILIAN_VOICE_PAPA?: string;
+  BAILIAN_VOICE_MAMA?: string;
+  BAILIAN_VOICE_MAP?: string;
 }
 
 type JsonBody = Record<string, unknown>;
@@ -42,9 +45,28 @@ const readDashScopeError = async (response: Response) => {
   }
 };
 
+const readVoiceMap = (env: Env) => {
+  const map: Record<string, string> = {};
+  if (env.BAILIAN_VOICE_PAPA) map.papa = env.BAILIAN_VOICE_PAPA;
+  if (env.BAILIAN_VOICE_MAMA) map.mama = env.BAILIAN_VOICE_MAMA;
+
+  if (env.BAILIAN_VOICE_MAP) {
+    try {
+      const parsed = JSON.parse(env.BAILIAN_VOICE_MAP) as Record<string, unknown>;
+      Object.entries(parsed).forEach(([key, value]) => {
+        if (typeof value === 'string' && value.trim()) map[key] = value.trim();
+      });
+    } catch {
+      // Ignore malformed optional map and rely on explicit variables.
+    }
+  }
+
+  return map;
+};
+
 async function synthesize(request: Request, env: Env) {
   if (!env.DASHSCOPE_API_KEY) {
-    return json(request, env, { error: 'Worker 未配置 DASHSCOPE_API_KEY' }, 500);
+    return json(request, env, { error: 'Worker 未配置百炼 API Key' }, 500);
   }
 
   let body: Record<string, unknown>;
@@ -55,7 +77,8 @@ async function synthesize(request: Request, env: Env) {
   }
 
   const text = String(body.text || '').trim();
-  const voiceId = String(body.voiceId || '').trim();
+  const voiceKey = String(body.voiceKey || '').trim();
+  const voiceId = readVoiceMap(env)[voiceKey];
   const targetModel = String(body.targetModel || env.BAILIAN_TARGET_MODEL || DEFAULT_MODEL).trim();
   const format = String(body.format || 'mp3');
   const instruction = String(body.instruction || DEFAULT_INSTRUCTION);
@@ -64,7 +87,8 @@ async function synthesize(request: Request, env: Env) {
   const volume = typeof body.volume === 'number' ? body.volume : 50;
 
   if (!text) return json(request, env, { error: '缺少朗读文本' }, 400);
-  if (!voiceId) return json(request, env, { error: '缺少百炼 voiceId' }, 400);
+  if (!voiceKey) return json(request, env, { error: '缺少 voiceKey' }, 400);
+  if (!voiceId) return json(request, env, { error: `Worker 未配置音色白名单：${voiceKey}` }, 400);
 
   const dashResponse = await fetch(DASH_SCOPE_TTS_URL, {
     method: 'POST',
@@ -104,7 +128,7 @@ async function synthesize(request: Request, env: Env) {
     requestId: data.request_id || data.requestId || '',
     provider: 'bailian',
     model: targetModel,
-    voiceId,
+    voiceKey,
   });
 }
 
