@@ -76,6 +76,9 @@ const today = () => new Date().toISOString();
 const id = () => crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' }).format(new Date(value));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+const formatPregnancyAge = (week: number, day: number) => day > 0 ? `孕 ${week} 周 + ${day} 天` : `孕 ${week} 周`;
+const localDayTime = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
 export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
   const [settings, setSettings] = useState<BabySettings>(defaultSettings);
@@ -116,11 +119,19 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
   const pregnancyText = useMemo(() => {
     if (settings.dueDate) {
       const due = new Date(settings.dueDate);
-      const days = Math.ceil((due.getTime() - Date.now()) / 86400000);
-      return days > 0 ? `距离预产期约 ${days} 天` : '宝宝可能已经见到世界啦';
+      if (!Number.isNaN(due.getTime())) {
+        const daysUntilDue = Math.ceil((localDayTime(due) - localDayTime(new Date())) / 86400000);
+        if (daysUntilDue >= 0) {
+          const gestationalDays = clamp(280 - daysUntilDue, 0, 294);
+          const week = Math.floor(gestationalDays / 7);
+          const day = gestationalDays % 7;
+          return `${formatPregnancyAge(week, day)} · 距预产期约 ${daysUntilDue} 天`;
+        }
+        return '宝宝可能已经见到世界啦';
+      }
     }
-    return `孕 ${settings.pregnancyWeek} 周`;
-  }, [settings.dueDate, settings.pregnancyWeek]);
+    return formatPregnancyAge(settings.pregnancyWeek, settings.pregnancyDay ?? 0);
+  }, [settings.dueDate, settings.pregnancyDay, settings.pregnancyWeek]);
 
   const persistStories = (nextStories: StoryRecord[]) => setStories(saveStories(nextStories));
   const persistSettings = (nextSettings: BabySettings) => setSettings(saveSettings(nextSettings));
@@ -355,8 +366,9 @@ function HomePage(props: {
         <div className="flex items-center gap-3">
           <div className="grid h-14 w-14 place-items-center rounded-full bg-[#f2d8df] text-[#865c73]"><Baby size={28} /></div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-[#9b7b80]">{props.pregnancyText}</p>
-            <h2 className="mt-1 text-xl font-black text-[#473934]">今天也给宝宝一点温柔</h2>
+            <p className="text-xs font-black text-[#a08182]">当前孕周</p>
+            <h2 className="mt-1 text-xl font-black text-[#473934]">{props.pregnancyText}</h2>
+            <p className="mt-1 text-sm font-bold text-[#9b7b80]">今天也给宝宝一点温柔</p>
           </div>
         </div>
       </Card>
@@ -571,7 +583,34 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
   const updateVoice = (patch: Partial<VoiceRuntimeConfig>) => { const next = { ...voiceLocal, ...patch }; setVoiceLocal(next); props.onVoiceConfigChange(next); };
   return (
     <div className="space-y-4">
-      <Card><h2 className="text-lg font-black">宝宝信息</h2><SettingsField label="宝宝昵称"><input value={local.babyName} onChange={event => update({ babyName: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField><SettingsField label="预产期"><input type="date" value={local.dueDate} onChange={event => update({ dueDate: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField><SettingsField label="孕周"><input type="number" min={1} max={42} value={local.pregnancyWeek} onChange={event => update({ pregnancyWeek: Number(event.target.value) })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField></Card>
+      <Card>
+        <h2 className="text-lg font-black">宝宝信息</h2>
+        <SettingsField label="宝宝昵称"><input value={local.babyName} onChange={event => update({ babyName: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField>
+        <SettingsField label="预产期"><input type="date" value={local.dueDate} onChange={event => update({ dueDate: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <SettingsField label="孕周">
+            <input
+              type="number"
+              min={1}
+              max={42}
+              value={local.pregnancyWeek}
+              onChange={event => update({ pregnancyWeek: clamp(Number(event.target.value), 1, 42) })}
+              className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none"
+            />
+          </SettingsField>
+          <SettingsField label="天数">
+            <input
+              type="number"
+              min={0}
+              max={6}
+              value={local.pregnancyDay ?? 0}
+              onChange={event => update({ pregnancyDay: clamp(Number(event.target.value), 0, 6) })}
+              className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none"
+            />
+          </SettingsField>
+        </div>
+        <p className="mt-3 rounded-2xl bg-[#fffaf5] p-3 text-xs font-bold leading-5 text-[#9b7b80]">填写预产期后，首页会自动推算孕周；没有预产期时使用手动设置的周数和天数。</p>
+      </Card>
       <Card><h2 className="text-lg font-black">默认偏好</h2><SettingsField label="默认长度"><select value={local.defaultLength} onChange={event => update({ defaultLength: event.target.value as StoryLength })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">{Object.entries(lengthLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></SettingsField><SettingsField label="默认风格"><select value={local.defaultStyle} onChange={event => update({ defaultStyle: event.target.value as StoryStyle })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">{Object.entries(styleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></SettingsField></Card>
       <Card><h2 className="text-lg font-black">百炼朗读</h2><p className="mt-2 text-sm leading-6 text-[#8c7470]">个人使用只需要配置 Worker 地址。爸爸/妈妈真实音色 ID 在 Cloudflare Worker 后台维护，前端只发送 papa 或 mama。</p><SettingsField label="Worker Base URL"><input value={voiceLocal.workerBaseUrl} onChange={event => updateVoice({ workerBaseUrl: event.target.value })} placeholder="https://your-worker.example.workers.dev" className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField><label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>启用百炼真实语音</span><input type="checkbox" checked={voiceLocal.realVoiceEnabled} onChange={event => updateVoice({ realVoiceEnabled: event.target.checked })} className="accent-[#76506f]" /></label><label className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>Worker 不可用时使用 mock</span><input type="checkbox" checked={voiceLocal.mockFallbackEnabled} onChange={event => updateVoice({ mockFallbackEnabled: event.target.checked })} className="accent-[#76506f]" /></label><p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">模型、音色 ID、朗读参数都由 Worker 和百炼后台控制，前端不再配置。</p></Card>
       <Card><h2 className="text-lg font-black">缓存</h2><p className="mt-2 text-sm leading-6 text-[#8c7470]">故事、音色配置和 mock 音频保存在本机浏览器。清理后不可恢复。</p><button type="button" onClick={props.onClear} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#fff0f0] text-sm font-black text-[#a9525e]"><Trash2 size={17} />清理故事与音色缓存</button></Card>

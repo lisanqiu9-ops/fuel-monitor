@@ -32,6 +32,7 @@ export const defaultSettings: BabySettings = {
   babyName: '小星星',
   dueDate: '',
   pregnancyWeek: 24,
+  pregnancyDay: 0,
   defaultLength: 'short',
   defaultStyle: 'star',
   defaultVoiceId: 'bailian-papa',

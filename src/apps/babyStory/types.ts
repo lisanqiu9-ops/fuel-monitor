@@ -8,6 +8,7 @@ export interface BabySettings {
   babyName: string;
   dueDate: string;
   pregnancyWeek: number;
+  pregnancyDay: number;
   defaultLength: StoryLength;
   defaultStyle: StoryStyle;
   defaultVoiceId: string;
