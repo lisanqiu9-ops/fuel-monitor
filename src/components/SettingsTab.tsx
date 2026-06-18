@@ -14,7 +14,6 @@ import {
   MessageCircle,
   PackageOpen,
   ScanLine,
-  Share2,
   Shield,
   Trash2,
   Upload,
@@ -22,7 +21,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { FuelRecord } from '../types';
 import { normalizeFuelRecords } from '../data';
-import { createRecordNotesSummary, downloadFuelCsv, downloadFuelJsonBackup, shareText } from '../lib/fuelExport';
+import { downloadFuelCsv, downloadFuelJsonBackup } from '../lib/fuelExport';
 
 const WORKER_CODE = `let cachedToken = null;
 let cachedTokenExpiresAt = 0;
@@ -140,7 +139,7 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
   const [showGuide, setShowGuide] = useState(false);
   const [activePanel, setActivePanel] = useState<PanelId>(null);
   const [copied, setCopied] = useState(false);
-  const [importMode, setImportMode] = useState<ImportMode>('replace');
+  const [importMode, setImportMode] = useState<ImportMode>('merge');
   const [testRes, setTestRes] = useState<StatusState>({ type: 'idle', msg: '' });
   const [dataMsg, setDataMsg] = useState<StatusState>({ type: 'idle', msg: '' });
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -210,16 +209,6 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
     setDataMsg({ type: 'success', msg: `已导出 ${records.length} 条 CSV，可用 Numbers 打开` });
   };
 
-  const handleShareLatestSummary = async () => {
-    const latest = records[records.length - 1];
-    if (!latest) {
-      setDataMsg({ type: 'error', msg: '暂无记录可分享' });
-      return;
-    }
-    const result = await shareText('车辆油耗记录', createRecordNotesSummary(latest));
-    setDataMsg({ type: 'success', msg: result === 'shared' ? '已打开系统分享' : '已复制最新记录摘要' });
-  };
-
   const handleImport = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -232,13 +221,13 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
         return;
       }
 
-      const nextRecords = importMode === 'replace' ? importedRecords : [...records, ...importedRecords];
+      const nextRecords = importMode === 'replace' ? importedRecords : mergeFuelRecords(records, importedRecords);
       onRecordsChange(nextRecords);
       setDataMsg({
         type: 'success',
         msg: importMode === 'replace'
           ? `已用 ${importedRecords.length} 条记录覆盖当前数据`
-          : `已合并 ${importedRecords.length} 条记录`,
+          : `已合并 ${importedRecords.length} 条记录，自动去重后共 ${nextRecords.length} 条`,
       });
     } catch (e: any) {
       setDataMsg({ type: 'error', msg: `导入失败: ${e.message}` });
@@ -308,31 +297,10 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
         </div>
       </section>
 
-      <section className="settings-quick-panel">
-        <button type="button" className="settings-quick-item" onClick={handleExport}>
-          <span><FileJson size={18} /></span>
-          <strong>JSON 备份</strong>
-        </button>
-        <button type="button" className="settings-quick-item" onClick={handleExportCsv}>
-          <span><FileSpreadsheet size={18} /></span>
-          <strong>导出 CSV</strong>
-        </button>
-        <button type="button" className="settings-quick-item" onClick={handleShareLatestSummary}>
-          <span><Share2 size={18} /></span>
-          <strong>分享摘要</strong>
-        </button>
-        <button type="button" className="settings-quick-item" onClick={() => openPanel('about')}>
-          <span><MessageCircle size={18} /></span>
-          <strong>问题反馈</strong>
-        </button>
-      </section>
-
       <SettingsGroup title="常用功能">
-        <SettingsRow icon={Database} label="数据同步" value={syncStatusText} onClick={() => openPanel('import')} />
-        <SettingsRow icon={FileSpreadsheet} label="导出 CSV" value="Numbers" onClick={handleExportCsv} />
-        <SettingsRow icon={Share2} label="分享最新摘要" value="备忘录" onClick={handleShareLatestSummary} />
+        <SettingsRow icon={Database} label="数据导入" value="默认合并去重" onClick={() => openPanel('import')} />
         <SettingsRow icon={ScanLine} label="OCR 识别设置" value={ocrStatusText} onClick={() => openPanel('ocr')} />
-        <SettingsRow icon={Upload} label="导入历史数据" value="支持 JSON" onClick={() => openPanel('import')} />
+        <SettingsRow icon={MessageCircle} label="问题反馈" onClick={() => openPanel('about')} />
       </SettingsGroup>
 
       <AnimatePresence initial={false}>
@@ -404,40 +372,28 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
             <div className="settings-panel-head">
               <div>
                 <span>数据导入</span>
-                <p>当前共有 {records.length} 条记录，导入前建议先导出备份</p>
+                <p>当前共有 {records.length} 条记录。建议使用合并模式，系统会自动去重。</p>
               </div>
               <button type="button" onClick={() => setActivePanel(null)}>×</button>
             </div>
 
             <div className="grid grid-cols-2 gap-2 settings-segment">
-              <button type="button" onClick={() => setImportMode('replace')} className={importMode === 'replace' ? 'is-active' : ''}>
-                覆盖当前数据
-              </button>
               <button type="button" onClick={() => setImportMode('merge')} className={importMode === 'merge' ? 'is-active' : ''}>
-                合并到当前
+                合并去重
+              </button>
+              <button type="button" onClick={() => setImportMode('replace')} className={importMode === 'replace' ? 'is-active' : ''}>
+                覆盖全部
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={handleExport} className="settings-secondary-button">
-                <Download size={16} />
-                导出 JSON
-              </button>
-              <button type="button" onClick={handleExportCsv} className="settings-secondary-button">
-                <FileSpreadsheet size={16} />
-                导出 CSV
-              </button>
+            <div className="settings-tip">
+              覆盖全部会先清空当前记录，只适合导入一份“完整合集”。如果只是补历史账单，请使用合并去重。
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => importInputRef.current?.click()} className="settings-primary-button">
-                <Upload size={16} />
-                导入 JSON
-              </button>
-              <button type="button" onClick={handleShareLatestSummary} className="settings-primary-button">
-                <Share2 size={16} />
-                分享摘要
-              </button>
-            </div>
+
+            <button type="button" onClick={() => importInputRef.current?.click()} className="settings-primary-button w-full">
+              <Upload size={16} />
+              选择 JSON 文件
+            </button>
             <input ref={importInputRef} type="file" accept="application/json,.json" className="hidden" onChange={handleImport} />
             {renderStatus(dataMsg)}
           </motion.section>
@@ -530,6 +486,23 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
       </footer>
     </div>
   );
+}
+
+function mergeFuelRecords(currentRecords: FuelRecord[], importedRecords: FuelRecord[]) {
+  const map = new Map<string, FuelRecord>();
+  const makeKey = (record: FuelRecord) => [
+    record.date,
+    record.fuelLiters.toFixed(2),
+    record.totalCost.toFixed(2),
+    record.pricePerLiter.toFixed(2),
+  ].join('|');
+
+  [...currentRecords, ...importedRecords].forEach(record => {
+    map.set(record.id || makeKey(record), record);
+    map.set(makeKey(record), record);
+  });
+
+  return normalizeFuelRecords(Array.from(new Map(Array.from(map.values()).map(record => [makeKey(record), record])).values()));
 }
 
 function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {

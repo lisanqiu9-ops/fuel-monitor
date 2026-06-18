@@ -86,7 +86,7 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
         <div className="w-10" />
       </div>
 
-      <div className="record-detail-scroll flex-1 overflow-y-auto px-5 pb-[calc(28px+env(safe-area-inset-bottom,0px))]">
+      <div className="record-detail-scroll flex-1 overflow-y-auto px-5 pb-[calc(94px+env(safe-area-inset-bottom,0px))]">
         <section className="detail-date-row">
           <Calendar size={18} />
           <div>
@@ -114,17 +114,6 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
               <strong>{metrics.costPerKm.toFixed(3)} 元/km</strong>
             </div>
           )}
-        </section>
-
-        <section className="detail-share-actions">
-          <button type="button" onClick={handleCopySummary}>
-            <Copy size={16} />
-            复制摘要
-          </button>
-          <button type="button" onClick={handleShareSummary}>
-            <Share2 size={16} />
-            分享到备忘录
-          </button>
         </section>
 
         <section className={`detail-card detail-report-card report-tone-${report.tone}`}>
@@ -217,6 +206,17 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
           </div>
         </section>
         {message && <div className="report-toast">{message}</div>}
+      </div>
+
+      <div className="detail-share-footer">
+        <button type="button" onClick={handleCopySummary}>
+          <Copy size={16} />
+          复制摘要
+        </button>
+        <button type="button" onClick={handleShareSummary}>
+          <Share2 size={16} />
+          分享到备忘录
+        </button>
       </div>
     </motion.div>
   );

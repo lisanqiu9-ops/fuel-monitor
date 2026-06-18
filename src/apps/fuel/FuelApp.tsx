@@ -8,6 +8,7 @@ import { HistoryModal } from '../../components/HistoryModal';
 import { RecordDetailModal } from '../../components/RecordDetailModal';
 import { SettingsTab } from '../../components/SettingsTab';
 import { AnalysisReportTab } from '../../components/AnalysisReportTab';
+import { OcrCaptureModal } from '../../components/OcrCaptureModal';
 import { Droplet, BarChart2, PlusCircle, Settings, Palette, Check, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
@@ -40,6 +41,7 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [theme, setTheme] = useState<ThemeId>('collectui');
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showOcrCapture, setShowOcrCapture] = useState(false);
   const [ocrLaunchRequest, setOcrLaunchRequest] = useState(0);
   const [ocrPrefillRequest, setOcrPrefillRequest] = useState(0);
   const [ocrPrefillData, setOcrPrefillData] = useState<any>(null);
@@ -100,8 +102,14 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
       setActiveTab('settings');
       return;
     }
+    setShowOcrCapture(true);
+  };
+
+  const handleOcrNeedManualReview = (data: any) => {
+    setOcrPrefillData(data);
+    setOcrPrefillRequest(prev => prev + 1);
+    setShowOcrCapture(false);
     setActiveTab('add');
-    setOcrLaunchRequest(prev => prev + 1);
   };
 
   const currentTab = tabMeta[activeTab];
@@ -239,6 +247,16 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
             record={selectedRecord} 
             allRecords={records} 
             onClose={() => setSelectedRecord(null)} 
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showOcrCapture && (
+          <OcrCaptureModal
+            onClose={() => setShowOcrCapture(false)}
+            onSave={handleSave}
+            onNeedManualReview={handleOcrNeedManualReview}
           />
         )}
       </AnimatePresence>
