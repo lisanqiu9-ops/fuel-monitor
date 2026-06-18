@@ -9,17 +9,20 @@ import {
   Database,
   Download,
   FileJson,
+  FileSpreadsheet,
   Info,
   MessageCircle,
   PackageOpen,
   ScanLine,
+  Share2,
   Shield,
   Trash2,
   Upload,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FuelRecord } from '../types';
-import { createExportPayload, normalizeFuelRecords } from '../data';
+import { normalizeFuelRecords } from '../data';
+import { createRecordNotesSummary, downloadFuelCsv, downloadFuelJsonBackup, shareText } from '../lib/fuelExport';
 
 const WORKER_CODE = `let cachedToken = null;
 let cachedTokenExpiresAt = 0;
@@ -198,15 +201,23 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
   };
 
   const handleExport = () => {
-    const payload = createExportPayload(records);
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `fuel-records-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setDataMsg({ type: 'success', msg: `已导出 ${payload.records.length} 条记录` });
+    const count = downloadFuelJsonBackup(records);
+    setDataMsg({ type: 'success', msg: `已导出 ${count} 条 JSON 备份` });
+  };
+
+  const handleExportCsv = () => {
+    downloadFuelCsv(records);
+    setDataMsg({ type: 'success', msg: `已导出 ${records.length} 条 CSV，可用 Numbers 打开` });
+  };
+
+  const handleShareLatestSummary = async () => {
+    const latest = records[records.length - 1];
+    if (!latest) {
+      setDataMsg({ type: 'error', msg: '暂无记录可分享' });
+      return;
+    }
+    const result = await shareText('车辆油耗记录', createRecordNotesSummary(latest));
+    setDataMsg({ type: 'success', msg: result === 'shared' ? '已打开系统分享' : '已复制最新记录摘要' });
   };
 
   const handleImport = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -300,15 +311,15 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
       <section className="settings-quick-panel">
         <button type="button" className="settings-quick-item" onClick={handleExport}>
           <span><FileJson size={18} /></span>
-          <strong>导出备份</strong>
+          <strong>JSON 备份</strong>
         </button>
-        <button type="button" className="settings-quick-item" onClick={() => openPanel('ocr')}>
-          <span><ScanLine size={18} /></span>
-          <strong>OCR 设置</strong>
+        <button type="button" className="settings-quick-item" onClick={handleExportCsv}>
+          <span><FileSpreadsheet size={18} /></span>
+          <strong>导出 CSV</strong>
         </button>
-        <button type="button" className="settings-quick-item" onClick={() => openPanel('import')}>
-          <span><Upload size={18} /></span>
-          <strong>数据导入</strong>
+        <button type="button" className="settings-quick-item" onClick={handleShareLatestSummary}>
+          <span><Share2 size={18} /></span>
+          <strong>分享摘要</strong>
         </button>
         <button type="button" className="settings-quick-item" onClick={() => openPanel('about')}>
           <span><MessageCircle size={18} /></span>
@@ -318,6 +329,8 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
 
       <SettingsGroup title="常用功能">
         <SettingsRow icon={Database} label="数据同步" value={syncStatusText} onClick={() => openPanel('import')} />
+        <SettingsRow icon={FileSpreadsheet} label="导出 CSV" value="Numbers" onClick={handleExportCsv} />
+        <SettingsRow icon={Share2} label="分享最新摘要" value="备忘录" onClick={handleShareLatestSummary} />
         <SettingsRow icon={ScanLine} label="OCR 识别设置" value={ocrStatusText} onClick={() => openPanel('ocr')} />
         <SettingsRow icon={Upload} label="导入历史数据" value="支持 JSON" onClick={() => openPanel('import')} />
       </SettingsGroup>
@@ -410,9 +423,19 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
                 <Download size={16} />
                 导出 JSON
               </button>
+              <button type="button" onClick={handleExportCsv} className="settings-secondary-button">
+                <FileSpreadsheet size={16} />
+                导出 CSV
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <button type="button" onClick={() => importInputRef.current?.click()} className="settings-primary-button">
                 <Upload size={16} />
                 导入 JSON
+              </button>
+              <button type="button" onClick={handleShareLatestSummary} className="settings-primary-button">
+                <Share2 size={16} />
+                分享摘要
               </button>
             </div>
             <input ref={importInputRef} type="file" accept="application/json,.json" className="hidden" onChange={handleImport} />
@@ -423,6 +446,7 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
 
       <SettingsGroup title="数据与安全">
         <SettingsRow icon={Download} label="下载数据备份" value="JSON" onClick={handleExport} />
+        <SettingsRow icon={FileSpreadsheet} label="下载表格数据" value="CSV" onClick={handleExportCsv} />
         <SettingsRow icon={Shield} label="安全说明" onClick={() => openPanel('security')} />
         <SettingsRow icon={Trash2} label="清空本地数据" danger onClick={handleClearLocal} />
       </SettingsGroup>

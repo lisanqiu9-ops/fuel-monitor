@@ -2125,3 +2125,331 @@ body {
 .soft-scrollbar::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+.analysis-report-page {
+  color: var(--app-text);
+}
+
+.report-head-card,
+.report-period-strip,
+.report-metric-card,
+.report-stats-card,
+.report-chart-card,
+.report-anomaly-card,
+.report-text-card,
+.report-empty-card {
+  border: 1px solid var(--app-border);
+  background: var(--app-card);
+  box-shadow: 0 14px 30px var(--app-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.app-shell[data-theme="collectui"] .report-head-card,
+.app-shell[data-theme="collectui"] .report-period-strip,
+.app-shell[data-theme="collectui"] .report-metric-card,
+.app-shell[data-theme="collectui"] .report-stats-card,
+.app-shell[data-theme="collectui"] .report-chart-card,
+.app-shell[data-theme="collectui"] .report-anomaly-card,
+.app-shell[data-theme="collectui"] .report-text-card,
+.app-shell[data-theme="collectui"] .report-empty-card {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 12px 26px rgba(42, 39, 35, 0.085);
+}
+
+.report-head-card {
+  border-radius: 22px;
+  padding: 17px;
+}
+
+.report-head-card span {
+  color: var(--app-accent);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.report-head-card strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--app-text);
+  font-size: 20px;
+  line-height: 1.28;
+  font-weight: 900;
+}
+
+.report-head-card p,
+.report-muted {
+  margin-top: 9px;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 700;
+}
+
+.report-period-strip {
+  border-radius: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+}
+
+.report-period-strip button {
+  min-width: 0;
+  min-height: 36px;
+  border-radius: 12px;
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.report-period-strip button.is-active {
+  background: var(--app-text);
+  color: var(--app-bg);
+}
+
+.report-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.report-metric-card {
+  min-height: 118px;
+  border-radius: 18px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.report-metric-card div {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--app-surface);
+  color: var(--app-accent);
+  margin-bottom: 10px;
+}
+
+.report-metric-card span,
+.report-stats-card span {
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.report-metric-card strong {
+  margin-top: 6px;
+  color: var(--app-text);
+  font-size: 23px;
+  line-height: 1.05;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.report-metric-card small {
+  margin-top: 4px;
+  color: var(--app-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.report-stats-card {
+  border-radius: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 13px;
+}
+
+.report-stats-card div {
+  min-width: 0;
+  border-radius: 14px;
+  background: var(--app-surface);
+  padding: 11px 10px;
+}
+
+.report-stats-card strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--app-text);
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.report-chart-card,
+.report-anomaly-card,
+.report-text-card {
+  border-radius: 20px;
+  padding: 14px;
+}
+
+.report-tooltip {
+  border-radius: 12px;
+  border: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-card) 94%, transparent);
+  padding: 10px 12px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.14);
+}
+
+.report-tooltip p {
+  margin: 0 0 5px;
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.report-tooltip span {
+  display: block;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.report-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--app-text);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.report-section-title svg {
+  color: var(--app-accent);
+}
+
+.report-text-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-anomaly-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-anomaly-list div {
+  border-radius: 15px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  padding: 11px 12px;
+}
+
+.report-anomaly-list strong,
+.report-anomaly-list span {
+  display: block;
+}
+
+.report-anomaly-list strong {
+  color: var(--app-text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.report-anomaly-list span {
+  margin-top: 5px;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+.report-text-card pre {
+  margin-top: 12px;
+  max-height: 420px;
+  overflow: auto;
+  border-radius: 15px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+  padding: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 700 12px/1.75 ui-sans-serif, system-ui, sans-serif;
+}
+
+.report-actions,
+.detail-share-actions {
+  display: grid;
+  gap: 9px;
+}
+
+.report-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.detail-share-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-actions button,
+.detail-share-actions button {
+  min-width: 0;
+  min-height: 44px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--app-text);
+  color: var(--app-bg);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.detail-share-actions button {
+  background: #1f1e1b;
+  color: #fffdf9;
+  box-shadow: 0 12px 24px rgba(31, 30, 27, 0.12);
+}
+
+.report-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  z-index: 80;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(31, 30, 27, 0.92);
+  color: #fffdf9;
+  box-shadow: 0 12px 28px rgba(31, 30, 27, 0.18);
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.report-empty-card {
+  margin-top: 28px;
+  border-radius: 22px;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.report-empty-card svg {
+  color: var(--app-accent);
+  margin: 0 auto 12px;
+}
+
+.report-empty-card strong {
+  display: block;
+  color: var(--app-text);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.report-empty-card p {
+  margin-top: 8px;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 700;
+}

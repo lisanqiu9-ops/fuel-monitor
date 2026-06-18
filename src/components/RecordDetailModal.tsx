@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { FuelRecord } from '../types';
-import { Activity, Calendar, ChevronLeft, ClipboardList, Clock, Fuel, Gauge, Navigation, Route, Tag, WalletCards, Zap } from 'lucide-react';
+import { Activity, Calendar, ChevronLeft, ClipboardList, Clock, Copy, Fuel, Gauge, Navigation, Route, Share2, Tag, WalletCards, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import { calculateEnergyMetrics, getPreviousRecord } from '../lib/metrics';
 import { generateRecordReport } from '../lib/report';
+import { createRecordNotesSummary, shareText } from '../lib/fuelExport';
 
 interface Props {
   record: FuelRecord;
@@ -20,6 +22,7 @@ const formatNumber = (value: number | null | undefined, suffix = '', digits?: nu
 };
 
 export function RecordDetailModal({ record, allRecords, onClose }: Props) {
+  const [message, setMessage] = useState('');
   const validFuel = allRecords.filter((item) => item.actualFuelPer100 !== null);
   const avgFuel = validFuel.length > 0
     ? validFuel.reduce((acc, item) => acc + item.actualFuelPer100!, 0) / validFuel.length
@@ -31,6 +34,22 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
   const report = generateRecordReport(record, allRecords);
   const maxScale = Math.max(actual, dash, avgFuel, 10);
   const getPercent = (value: number) => `${Math.min((value / maxScale) * 100, 100)}%`;
+  const summaryText = createRecordNotesSummary(record);
+
+  const notify = (text: string) => {
+    setMessage(text);
+    window.setTimeout(() => setMessage(''), 1600);
+  };
+
+  const handleCopySummary = async () => {
+    await navigator.clipboard.writeText(summaryText);
+    notify('摘要已复制');
+  };
+
+  const handleShareSummary = async () => {
+    const result = await shareText('车辆油耗记录', summaryText);
+    notify(result === 'shared' ? '已打开系统分享' : '摘要已复制');
+  };
 
   const stats = [
     { icon: Fuel, label: '加油量', value: formatNumber(record.fuelLiters, ' L'), primary: true },
@@ -95,6 +114,17 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
               <strong>{metrics.costPerKm.toFixed(3)} 元/km</strong>
             </div>
           )}
+        </section>
+
+        <section className="detail-share-actions">
+          <button type="button" onClick={handleCopySummary}>
+            <Copy size={16} />
+            复制摘要
+          </button>
+          <button type="button" onClick={handleShareSummary}>
+            <Share2 size={16} />
+            分享到备忘录
+          </button>
         </section>
 
         <section className={`detail-card detail-report-card report-tone-${report.tone}`}>
@@ -186,6 +216,7 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
             })}
           </div>
         </section>
+        {message && <div className="report-toast">{message}</div>}
       </div>
     </motion.div>
   );

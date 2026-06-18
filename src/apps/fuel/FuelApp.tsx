@@ -7,7 +7,8 @@ import { AddRecordTab } from '../../components/AddRecordTab';
 import { HistoryModal } from '../../components/HistoryModal';
 import { RecordDetailModal } from '../../components/RecordDetailModal';
 import { SettingsTab } from '../../components/SettingsTab';
-import { Droplet, BarChart2, PlusCircle, Settings, Palette, Check } from 'lucide-react';
+import { AnalysisReportTab } from '../../components/AnalysisReportTab';
+import { Droplet, BarChart2, PlusCircle, Settings, Palette, Check, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { checkOcrConfig } from '../../lib/ocr';
@@ -15,6 +16,7 @@ import { checkOcrConfig } from '../../lib/ocr';
 const tabMeta = {
   overview: { title: '概览', subtitle: '油耗监控' },
   trend: { title: '趋势', subtitle: '油耗监控' },
+  report: { title: '分析', subtitle: '用车成本报告' },
   add: { title: '记录加油', subtitle: '油耗监控' },
   settings: { title: '我的', subtitle: '油耗监控' },
 } as const;
@@ -32,7 +34,7 @@ interface FuelAppProps {
 
 export default function App({ onBackToToolbox }: FuelAppProps) {
   const [records, setRecords] = useState<FuelRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'trend' | 'add' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'trend' | 'report' | 'add' | 'settings'>('overview');
   const [showHistory, setShowHistory] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<FuelRecord | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -167,6 +169,11 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
               <TrendTab records={records} />
             </motion.div>
           )}
+          {activeTab === 'report' && (
+            <motion.div key="report" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+              <AnalysisReportTab records={records} />
+            </motion.div>
+          )}
           {activeTab === 'add' && (
             <motion.div key="add" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
               <AddRecordTab onSave={handleSave} onOpenHistory={() => setShowHistory(true)} onGoSettings={() => setActiveTab('settings')} ocrLaunchRequest={ocrLaunchRequest} ocrPrefillData={ocrPrefillData} ocrPrefillRequest={ocrPrefillRequest} />
@@ -195,6 +202,13 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
         >
           <BarChart2 size={23} />
           <span className="text-[11px] mt-0.5 font-medium">趋势</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('report')}
+          className={cn("app-nav-item flex flex-col items-center justify-start w-full h-full relative transition-colors", activeTab === 'report' ? 'text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
+        >
+          <ClipboardList size={23} />
+          <span className="text-[11px] mt-0.5 font-medium">分析</span>
         </button>
         <button 
           onClick={() => setActiveTab('add')}
