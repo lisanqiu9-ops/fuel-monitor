@@ -1,13 +1,13 @@
-﻿import { BarChart3, FileUp, LayoutDashboard, ReceiptText, ShieldCheck } from 'lucide-react';
+﻿import { BarChart3, LayoutDashboard, ReceiptText, Settings, ShieldCheck } from 'lucide-react';
 
-export type LedgerTab = 'overview' | 'analysis' | 'transactions' | 'quality' | 'import';
+export type LedgerTab = 'overview' | 'analysis' | 'transactions' | 'quality' | 'settings';
 
 export const ledgerTabs = [
   { id: 'overview', label: '概览', icon: LayoutDashboard },
   { id: 'analysis', label: '分析', icon: BarChart3 },
   { id: 'transactions', label: '流水', icon: ReceiptText },
   { id: 'quality', label: '质量', icon: ShieldCheck },
-  { id: 'import', label: '导入', icon: FileUp },
+  { id: 'settings', label: '设置', icon: Settings },
 ] as const;
 
 interface Props {
