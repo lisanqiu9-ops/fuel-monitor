@@ -47,19 +47,21 @@ export function OverviewTab({ records, onRecordClick, onGoAdd, onGoRecognize, on
         </div>
       </section>
 
-      <section className="grid grid-cols-3 gap-2.5">
-        <button type="button" onClick={onGoAdd} className="action-tile">
-          <PlusCircle size={17} />
-          <span>添加</span>
+      <section className="rounded-2xl border border-white/10 bg-[#1a1e2a] p-3 shadow-[0_12px_26px_rgba(0,0,0,0.12)]">
+        <button type="button" onClick={onGoRecognize} className="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl bg-[#f5a623] px-4 text-left text-black active:bg-[#d48c1a]">
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-black/10"><Camera size={20} /></span>
+            <span className="min-w-0">
+              <strong className="block text-sm font-black">拍照识别</strong>
+              <span className="mt-0.5 block text-[11px] font-bold opacity-75">优先识别小票和仪表盘，再确认保存</span>
+            </span>
+          </span>
+          <ChevronRight size={18} className="shrink-0" />
         </button>
-        <button type="button" onClick={onGoRecognize} className="action-tile">
-          <Camera size={17} />
-          <span>识别</span>
-        </button>
-        <button type="button" onClick={onOpenHistory} className="action-tile">
-          <History size={17} />
-          <span>历史</span>
-        </button>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button type="button" onClick={onGoAdd} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#0d0f14] text-xs font-bold text-[#e8ecf4] active:bg-white/5"><PlusCircle size={16} />手动添加</button>
+          <button type="button" onClick={onOpenHistory} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#0d0f14] text-xs font-bold text-[#e8ecf4] active:bg-white/5"><History size={16} />历史记录</button>
+        </div>
       </section>
 
       <button type="button" onClick={onGoTrend} className="balance-strip w-full text-left">
@@ -113,7 +115,11 @@ export function OverviewTab({ records, onRecordClick, onGoAdd, onGoRecognize, on
         {recentRecords.length === 0 ? (
           <div className="empty-soft">
             <div>暂无记录</div>
-            <button type="button" onClick={onGoAdd}>添加第一条</button>
+            <p className="mt-1 text-[11px] text-[#6b7a99]">可以先拍照识别小票，也可以手动录入第一条。</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button type="button" onClick={onGoRecognize} className="rounded-lg bg-[#f5a623] px-3 py-2 text-xs font-black text-black">拍照识别</button>
+              <button type="button" onClick={onGoAdd} className="rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs font-black text-[#e8ecf4]">手动添加</button>
+            </div>
           </div>
         ) : (
           <div className="activity-list">

@@ -196,5 +196,5 @@ export async function synthesizeSpeech(input: SynthesizeInput): Promise<Synthesi
   }
 
   if (input.voiceConfig.mockFallbackEnabled) return mockSynthesizeSpeech(input);
-  throw new Error('当前未启用 mock 兜底。请配置 Worker 或打开 mock 兜底。');
+  throw new Error('当前未启用本地兜底。请配置 Worker 或打开本地兜底。');
 }

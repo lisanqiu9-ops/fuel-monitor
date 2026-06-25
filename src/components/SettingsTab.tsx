@@ -297,7 +297,7 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
         </div>
       </section>
 
-      <SettingsGroup title="常用功能">
+      <SettingsGroup title="数据">
         <SettingsRow icon={Database} label="数据导入" value="默认合并去重" onClick={() => openPanel('import')} />
         <SettingsRow icon={ScanLine} label="OCR 识别设置" value={ocrStatusText} onClick={() => openPanel('ocr')} />
         <SettingsRow icon={MessageCircle} label="问题反馈" onClick={() => openPanel('about')} />
@@ -400,7 +400,7 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
         )}
       </AnimatePresence>
 
-      <SettingsGroup title="数据与安全">
+      <SettingsGroup title="安全与说明">
         <SettingsRow icon={Download} label="下载数据备份" value="JSON" onClick={handleExport} />
         <SettingsRow icon={FileSpreadsheet} label="下载表格数据" value="CSV" onClick={handleExportCsv} />
         <SettingsRow icon={Shield} label="安全说明" onClick={() => openPanel('security')} />
@@ -410,7 +410,7 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
       <AnimatePresence initial={false}>
         {activePanel === 'security' && (
           <InfoPanel title="安全说明" icon={Shield} onClose={() => setActivePanel(null)}>
-            OCR 密钥只建议放在 Cloudflare Worker 环境变量中。Web 前端仅保存 Worker URL 和可选访问令牌；加油记录保存在当前浏览器 localStorage 中，跨设备使用请通过 JSON 备份迁移。
+            加油记录保存在当前浏览器。OCR 只通过 Cloudflare Worker 调用，密钥放在 Worker 环境变量中；跨设备使用请先导出 JSON 或 CSV 备份。
           </InfoPanel>
         )}
       </AnimatePresence>

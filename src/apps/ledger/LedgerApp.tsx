@@ -44,13 +44,13 @@ export default function LedgerApp({ onBackToToolbox }: Props) {
     setError(null);
     try {
       const parsed = await parseLedgerFile(file);
-      if (!parsed.records.length) throw new Error('没有读到有效记录。请确认文件包含表头和账目数据。');
+      if (!parsed.records.length) throw new Error('没有读到有效记录。原始文件不会被修改，请确认文件包含表头和账目数据。');
       const next: LedgerCache = { version: 1, fileName: file.name, importedAt: new Date().toISOString(), ...parsed };
       localStorage.setItem(cacheKey, JSON.stringify(next));
       setCache(next);
       setActiveTab('overview');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '导入失败，请检查文件格式后重试。');
+      setError(reason instanceof Error ? reason.message : '导入失败。原始 ledger.csv 不会被修改，请检查文件格式后重试。');
     } finally {
       setIsImporting(false);
     }
@@ -65,7 +65,7 @@ export default function LedgerApp({ onBackToToolbox }: Props) {
 
   if (!ready) return <div className="h-dvh bg-[#fffaf2]" />;
 
-  const emptyPage = <section className="rounded-2xl border border-dashed border-[#d9c9d6] bg-white/55 px-5 py-8 text-center"><BookOpenCheck size={26} className="mx-auto text-[#a7829d]" /><h2 className="mt-3 text-base font-black">还没有本地账本</h2><p className="mx-auto mt-2 max-w-xs text-xs font-bold leading-5 text-[#8b7471]">前往设置选择 ledger.csv，导入后即可查看消费概览和数据质量。</p><button type="button" onClick={() => setActiveTab('settings')} className="mt-4 h-9 rounded-xl bg-[#6f536b] px-4 text-xs font-black text-white">前往设置</button></section>;
+  const emptyPage = <section className="rounded-2xl border border-dashed border-[#d9c9d6] bg-white/55 px-5 py-8 text-center"><BookOpenCheck size={26} className="mx-auto text-[#a7829d]" /><h2 className="mt-3 text-base font-black">还没有本地账本</h2><p className="mx-auto mt-2 max-w-xs text-xs font-bold leading-5 text-[#8b7471]">选择 ledger.csv 导入后，即可查看消费概览和数据质量；原始文件不会上传。</p><button type="button" onClick={() => setActiveTab('settings')} className="mt-4 h-9 rounded-xl bg-[#6f536b] px-4 text-xs font-black text-white">导入 ledger.csv</button></section>;
 
   let page = emptyPage;
   if (activeTab === 'settings') page = <LedgerSettingsPage cache={cache} isImporting={isImporting} error={error} onImport={handleImport} onClear={clearCache} onBackToToolbox={onBackToToolbox} />;
@@ -76,5 +76,5 @@ export default function LedgerApp({ onBackToToolbox }: Props) {
     if (activeTab === 'quality') page = <LedgerQualityPage items={quality} />;
   }
 
-  return <><LedgerLayout>{page}</LedgerLayout><LedgerBottomNav activeTab={activeTab} onChange={setActiveTab} /></>;
+  return <><LedgerLayout onBackToToolbox={onBackToToolbox}>{page}</LedgerLayout><LedgerBottomNav activeTab={activeTab} onChange={setActiveTab} /></>;
 }

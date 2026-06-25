@@ -9,7 +9,7 @@ import { RecordDetailModal } from '../../components/RecordDetailModal';
 import { SettingsTab } from '../../components/SettingsTab';
 import { AnalysisReportTab } from '../../components/AnalysisReportTab';
 import { OcrCaptureModal } from '../../components/OcrCaptureModal';
-import { Droplet, BarChart2, PlusCircle, Settings, Palette, Check, ClipboardList } from 'lucide-react';
+import { Droplet, BarChart2, PlusCircle, Settings, Palette, Check, ClipboardList, PackageOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { checkOcrConfig } from '../../lib/ocr';
@@ -127,16 +127,29 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
             {currentTab.title}
           </h1>
         </div>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowThemePicker(prev => !prev)}
-            className="theme-trigger mt-1 grid place-items-center rounded-full border border-white/10 bg-[#0d0f14] text-[#e8ecf4] active:bg-white/5"
-            aria-label="切换主题"
-          >
-            <Palette size={18} />
-          </button>
-          <AnimatePresence>
+        <div className="flex shrink-0 items-start gap-2">
+          {onBackToToolbox && (
+            <button
+              type="button"
+              onClick={onBackToToolbox}
+              className="theme-trigger mt-1 grid place-items-center rounded-full border border-white/10 bg-[#0d0f14] text-[#e8ecf4] active:bg-white/5"
+              aria-label="返回三秋工具箱"
+              title="返回三秋工具箱"
+            >
+              <PackageOpen size={18} />
+            </button>
+          )}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowThemePicker(prev => !prev)}
+              className="theme-trigger mt-1 grid place-items-center rounded-full border border-white/10 bg-[#0d0f14] text-[#e8ecf4] active:bg-white/5"
+              aria-label="切换主题"
+              title="切换主题"
+            >
+              <Palette size={18} />
+            </button>
+            <AnimatePresence>
             {showThemePicker && (
               <motion.div
                 initial={{ opacity: 0, y: -6, scale: 0.98 }}
@@ -161,7 +174,8 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
                 ))}
               </motion.div>
             )}
-          </AnimatePresence>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
