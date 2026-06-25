@@ -1,6 +1,6 @@
 # Baby Story Cloudflare Worker
 
-This Worker is the server-side proxy for the prenatal story assistant. The frontend only stores the Worker Base URL, enable switches, and safe voice keys such as `papa` or `mama`. Story provider, model, temperature, and API keys live in Cloudflare Worker configuration. DashScope/Bailian and DeepSeek API keys stay in Cloudflare Worker Secrets and never enter frontend code, localStorage, IndexedDB, or the GitHub Pages build.
+This Worker is the server-side proxy for the prenatal story assistant. For the Cloudflare dashboard online editor, paste `worker/src/dashboard-worker.js`; for Wrangler/source control, use `worker/src/index.ts`. The frontend only stores the Worker Base URL, enable switches, and safe voice keys such as `papa` or `mama`. Story provider, model, temperature, and API keys live in Cloudflare Worker configuration. DashScope/Bailian and DeepSeek API keys stay in Cloudflare Worker Secrets and never enter frontend code, localStorage, IndexedDB, or the GitHub Pages build.
 
 The Worker currently supports:
 

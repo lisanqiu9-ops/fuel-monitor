@@ -22,7 +22,7 @@ import {
   Volume2,
   Wand2,
 } from 'lucide-react';
-import workerCode from '../../../worker/src/index.ts?raw';
+import workerCode from '../../../worker/src/dashboard-worker.js?raw';
 import { generateStory, synthesizeSpeech } from './api';
 import {
   clearBabyStoryCache,
