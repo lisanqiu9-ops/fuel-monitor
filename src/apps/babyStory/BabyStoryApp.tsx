@@ -83,7 +83,7 @@ const formatDate = (value: string) =>
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 const formatPregnancyAge = (week: number, day: number) => day > 0 ? `孕 ${week} 周 + ${day} 天` : `孕 ${week} 周`;
 const localDayTime = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-const playbackRateOptions = [0.75, 0.85, 1, 1.15] as const;
+const playbackRateOptions = [0.8, 0.9, 1, 1.15] as const;
 const formatPlaybackRate = (rate: number) => `${rate.toFixed(2).replace(/\.?0+$/, '')}x`;
 
 export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
@@ -470,23 +470,37 @@ function GeneratePage(props: {
         <OptionGroup title="故事长度">{Object.entries(lengthLabels).map(([value, label]) => <span key={value}><PillButton value={value as StoryLength} label={label} active={props.length === value} onClick={props.onLengthChange} /></span>)}</OptionGroup>
         <OptionGroup title="故事风格">{Object.entries(styleLabels).map(([value, label]) => <span key={value}><PillButton value={value as StoryStyle} label={label} active={props.style === value} onClick={props.onStyleChange} /></span>)}</OptionGroup>
         <OptionGroup title="朗读语气">{Object.entries(toneLabels).map(([value, label]) => <span key={value}><PillButton value={value as ReadingTone} label={label} active={props.tone === value} onClick={props.onToneChange} /></span>)}</OptionGroup>
-        <button type="button" disabled={isLoading} onClick={props.onGenerate} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#6f536b] text-sm font-black text-white disabled:opacity-60">{isLoading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />} 生成胎教故事</button>
+        <button type="button" disabled={isLoading} onClick={props.onGenerate} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#6f536b] text-sm font-black text-white disabled:opacity-75">{isLoading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />} {isLoading ? '正在生成故事...' : '生成胎教故事'}</button>
+        {isLoading && <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-black leading-5 text-[#8c6380]">正在请大模型写故事，通常需要十几秒。请稍等，不要重复点击。</p>}
         {props.storyState === 'error' && <ErrorState text={props.error} />}
       </Card>
       {props.draft ? (
         <Card>
-          <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-black">预览与编辑</h2><Pencil size={18} className="text-[#b18091]" /></div>
-          <input value={props.draft.title} onChange={event => props.onDraftChange({ ...props.draft!, title: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-base font-black outline-none" />
-          <textarea ref={bodyRef} value={props.draft.body} onChange={event => props.onDraftChange({ ...props.draft!, body: event.target.value })} rows={8} className="mt-3 min-h-[320px] w-full resize-none overflow-hidden rounded-[24px] border border-[#eadcda] bg-[#fffaf5]/85 p-4 text-[15px] font-bold leading-8 outline-none" />
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-black">故事预览</h2><Pencil size={18} className="text-[#b18091]" /></div>
+          <article className="rounded-[24px] border border-[#eadcda] bg-[#fffaf5]/85 px-4 py-5 text-[#463b36]">
+            <h2 className="text-center text-xl font-black leading-8">{props.draft.title}</h2>
+            <div className="mt-5 space-y-4 text-[15px] font-bold leading-8">
+              {props.draft.body.split(/\n\s*\n/).filter(Boolean).map((paragraph, index) => (
+                <p key={index} className="text-justify [text-indent:2em]">{paragraph.trim()}</p>
+              ))}
+            </div>
+          </article>
+          <details className="mt-3 rounded-2xl bg-[#fffaf5] text-xs font-bold text-[#735f5a]">
+            <summary className="cursor-pointer px-3 py-3">编辑标题和正文</summary>
+            <div className="border-t border-[#eadcda] p-3">
+              <input value={props.draft.title} onChange={event => props.onDraftChange({ ...props.draft!, title: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-white/70 px-4 py-3 text-base font-black outline-none" />
+              <textarea ref={bodyRef} value={props.draft.body} onChange={event => props.onDraftChange({ ...props.draft!, body: event.target.value })} rows={8} className="mt-3 min-h-[320px] w-full resize-none overflow-hidden rounded-[24px] border border-[#eadcda] bg-white/70 p-4 text-[15px] font-bold leading-8 outline-none" />
+            </div>
+          </details>
           <div className="mt-4 grid grid-cols-3 gap-2">
             <button type="button" onClick={handleSaveClick} className="flex h-11 items-center justify-center gap-1 rounded-2xl bg-[#efe5e1] text-xs font-black text-[#735f5a]"><Save size={16} />保存</button>
-            <button type="button" onClick={props.onGenerate} className="flex h-11 items-center justify-center gap-1 rounded-2xl bg-[#eee3ef] text-xs font-black text-[#76506f]"><RotateCcw size={16} />重写</button>
+            <button type="button" onClick={props.onGenerate} disabled={isLoading} className="flex h-11 items-center justify-center gap-1 rounded-2xl bg-[#eee3ef] text-xs font-black text-[#76506f] disabled:opacity-60">{isLoading ? <Loader2 className="animate-spin" size={16} /> : <RotateCcw size={16} />}重写</button>
             <button type="button" onClick={props.onSynthesize} className="flex h-11 items-center justify-center gap-1 rounded-2xl bg-[#6f536b] text-xs font-black text-white"><Volume2 size={16} />去朗读</button>
           </div>
           {saveNotice && <p className="mt-3 rounded-2xl bg-[#eef7ed] p-3 text-xs font-black leading-5 text-[#5f7a58]">{saveNotice}</p>}
           {props.audioState === 'error' && <ErrorState text={props.error} />}
         </Card>
-      ) : <EmptyState text="输入一个主题，就可以生成适合胎教朗读的小故事。" />}
+      ) : isLoading ? <EmptyState text="故事正在生成中，马上就会出现在这里。" /> : <EmptyState text="输入一个主题，就可以生成适合胎教朗读的小故事。" />}
     </div>
   );
 }
@@ -500,7 +514,7 @@ function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; select
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   useEffect(() => { setProgress(0); setPlaying(false); }, [props.story?.audio?.id]);
-  const playbackRate = props.voiceConfig.playbackRate ?? 0.85;
+  const playbackRate = props.voiceConfig.playbackRate ?? 1;
   const applyPlaybackRate = () => {
     if (audioRef.current) audioRef.current.playbackRate = playbackRate;
   };

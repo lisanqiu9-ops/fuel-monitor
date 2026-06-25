@@ -48,10 +48,10 @@ export const defaultVoiceRuntimeConfig: VoiceRuntimeConfig = {
   realVoiceEnabled: false,
   mockFallbackEnabled: true,
   targetModel: 'qwen3-tts-vc-2026-01-22',
-  defaultRate: 0.85,
-  playbackRate: 0.85,
+  defaultRate: 1,
+  playbackRate: 1,
   defaultVolume: 50,
-  defaultInstruction: '请用温柔、轻声、亲切、适合胎教睡前故事的语气朗读，语速稍慢，停顿自然。',
+  defaultInstruction: '请用温柔、轻声、亲切、适合胎教睡前故事的语气朗读，使用标准语速，停顿自然。',
 };
 
 const readJson = <T,>(key: string, fallback: T): T => {
@@ -100,8 +100,13 @@ export const saveStories = (stories: StoryRecord[]) => {
 
 export const loadVoices = () => systemVoices;
 
-export const loadVoiceRuntimeConfig = () =>
-  readJson<VoiceRuntimeConfig>(VOICE_RUNTIME_KEY, defaultVoiceRuntimeConfig);
+export const loadVoiceRuntimeConfig = () => {
+  const config = readJson<VoiceRuntimeConfig>(VOICE_RUNTIME_KEY, defaultVoiceRuntimeConfig);
+  if (config.defaultRate === 0.85 && config.playbackRate === 0.85) {
+    return { ...config, defaultRate: 1, playbackRate: 1 };
+  }
+  return config;
+};
 
 export const saveVoiceRuntimeConfig = (config: VoiceRuntimeConfig) => {
   const sanitized: VoiceRuntimeConfig = {
