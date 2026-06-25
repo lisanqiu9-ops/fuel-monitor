@@ -74,6 +74,10 @@ async function generateMockStory(input: GenerateStoryInput): Promise<StoryDraft>
 }
 
 export async function generateStory(input: GenerateStoryInput, config?: StoryGenerationConfig): Promise<StoryDraft> {
+  if (config?.realStoryEnabled && !config.workerBaseUrl) {
+    throw new Error('已启用大模型生成故事，请先在设置页填写 Worker Base URL');
+  }
+
   const shouldUseWorker = Boolean(config?.realStoryEnabled && config.workerBaseUrl);
 
   if (shouldUseWorker && config) {
