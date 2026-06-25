@@ -24,6 +24,6 @@ export function LedgerTransactionsPage({ records }: { records: LedgerRecord[] })
       <button type="button" onClick={() => setPendingOnly(value => !value)} className={'mt-2 inline-flex h-9 items-center gap-2 rounded-xl px-3 text-xs font-black ' + (pendingOnly ? 'bg-[#fff0db] text-[#a4772c]' : 'bg-[#f6f0ec] text-[#8b7471]')}><SlidersHorizontal size={14} />仅看待确认</button>
     </section>
     <div className="flex items-center justify-between"><p className="text-xs font-black text-[#8b7471]">筛选结果</p><strong className="text-sm font-black text-[#76506f]">{filtered.length} 条</strong></div>
-    <div className="space-y-2.5">{filtered.slice(0, 120).map(record => <LedgerTransactionCard key={record.id + '-' + record.sourceRow} record={record} />)}{!filtered.length && <p className="rounded-2xl bg-white/60 p-6 text-center text-sm font-bold text-[#8b7471]">没有符合条件的流水。</p>}{filtered.length > 120 && <p className="rounded-2xl bg-white/55 px-4 py-3 text-center text-xs font-bold text-[#8b7471]">已展示最近 120 条，请用搜索或筛选缩小范围。</p>}</div>
+    <div className="space-y-2.5">{filtered.slice(0, 120).map(record => <div key={record.id + '-' + record.sourceRow}><LedgerTransactionCard record={record} /></div>)}{!filtered.length && <p className="rounded-2xl bg-white/60 p-6 text-center text-sm font-bold text-[#8b7471]">没有符合条件的流水。</p>}{filtered.length > 120 && <p className="rounded-2xl bg-white/55 px-4 py-3 text-center text-xs font-bold text-[#8b7471]">已展示最近 120 条，请用搜索或筛选缩小范围。</p>}</div>
   </div>;
 }

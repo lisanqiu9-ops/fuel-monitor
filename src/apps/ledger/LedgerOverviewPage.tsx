@@ -62,7 +62,7 @@ export function LedgerOverviewPage({ stats, records, quality }: Props) {
         <div><h2 className="text-base font-black">最近流水</h2><p className="mt-1 text-xs font-bold text-[#8b7471]">最近 5 笔，按账单时间排序</p></div>
         <ReceiptText size={18} className="text-[#9a817e]" />
       </div>
-      <div className="space-y-2.5">{latest.map(record => <LedgerTransactionCard key={record.id + '-' + record.sourceRow} record={record} />)}</div>
+      <div className="space-y-2.5">{latest.map(record => <div key={record.id + '-' + record.sourceRow}><LedgerTransactionCard record={record} /></div>)}</div>
     </section>
   </div>;
 }
