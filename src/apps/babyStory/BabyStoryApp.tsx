@@ -50,7 +50,7 @@ import {
 } from './types';
 import { cn } from '../../lib/utils';
 
-type TabId = 'home' | 'generate' | 'player' | 'history' | 'settings';
+type TabId = 'home' | 'generate' | 'player' | 'settings';
 type LoadState = 'idle' | 'loading' | 'error';
 
 interface BabyStoryAppProps {
@@ -72,7 +72,6 @@ const navItems = [
   { id: 'home', label: '首页', icon: Home },
   { id: 'generate', label: '生成', icon: Wand2 },
   { id: 'player', label: '播放', icon: Play },
-  { id: 'history', label: '历史', icon: BookOpen },
   { id: 'settings', label: '设置', icon: Settings },
 ] as const;
 
@@ -85,6 +84,7 @@ const formatPregnancyAge = (week: number, day: number) => day > 0 ? `孕 ${week}
 const localDayTime = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 const playbackRateOptions = [0.8, 0.9, 1, 1.15] as const;
 const formatPlaybackRate = (rate: number) => `${rate.toFixed(2).replace(/\.?0+$/, '')}x`;
+const isAudioExpired = (audio?: AudioRecord) => Boolean(audio?.expiresAt && Date.now() / 1000 > audio.expiresAt);
 
 export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
   const [settings, setSettings] = useState<BabySettings>(defaultSettings);
@@ -142,11 +142,6 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
   const persistStories = (nextStories: StoryRecord[]) => setStories(saveStories(nextStories));
   const persistSettings = (nextSettings: BabySettings) => setSettings(saveSettings(nextSettings));
   const persistVoiceConfig = (nextConfig: VoiceRuntimeConfig) => setVoiceConfig(saveVoiceRuntimeConfig(nextConfig));
-  const handleVoiceSelect = (voiceId: string) => {
-    setSelectedVoiceId(voiceId);
-    persistSettings({ ...settings, defaultVoiceId: voiceId });
-  };
-
   const handleGenerate = async (nextTheme = theme || recommendedTheme) => {
     setStoryState('loading');
     setError('');
@@ -264,7 +259,7 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
                 setActiveTab('generate');
               }}
               onGoPlayer={() => setActiveTab('player')}
-              onGoHistory={() => setActiveTab('history')}
+              onGoHistory={() => setActiveTab('player')}
             />
           )}
           {activeTab === 'generate' && (
@@ -292,15 +287,19 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
               }}
             />
           )}
-          {activeTab === 'player' && <PlayerPage story={selectedStory} voices={voices} selectedVoiceId={selectedVoiceId} voiceConfig={voiceConfig} audioState={audioState} error={error} onVoiceSelect={handleVoiceSelect} onVoiceConfigChange={persistVoiceConfig} onSynthesize={() => handleSynthesize(selectedStory)} onGoGenerate={() => setActiveTab('generate')} />}
-          {activeTab === 'history' && (
-            <HistoryPage
+          {activeTab === 'player' && (
+            <PlayerPage
+              story={selectedStory}
               stories={stories}
-              onPlay={story => {
-                setSelectedStoryId(story.id);
-                setActiveTab('player');
-              }}
-              onEdit={story => {
+              voiceName={selectedVoice?.name ?? '默认声音'}
+              voiceConfig={voiceConfig}
+              audioState={audioState}
+              error={error}
+              onVoiceConfigChange={persistVoiceConfig}
+              onSynthesize={() => handleSynthesize(selectedStory)}
+              onGoGenerate={() => setActiveTab('generate')}
+              onPlayStory={story => setSelectedStoryId(story.id)}
+              onEditStory={story => {
                 setSelectedStoryId(story.id);
                 setDraft(story);
                 setTheme(story.theme);
@@ -309,14 +308,18 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
                 setTone(story.tone);
                 setActiveTab('generate');
               }}
-              onDelete={handleDeleteStory}
+              onDeleteStory={handleDeleteStory}
             />
           )}
           {activeTab === 'settings' && (
             <SettingsPage
               settings={settings}
               voiceConfig={voiceConfig}
-              onSettingsChange={persistSettings}
+              voices={voices}
+              onSettingsChange={nextSettings => {
+                persistSettings(nextSettings);
+                setSelectedVoiceId(nextSettings.defaultVoiceId || defaultSettings.defaultVoiceId);
+              }}
               onVoiceConfigChange={persistVoiceConfig}
               onBackToToolbox={onBackToToolbox}
               onClear={() => {
@@ -330,7 +333,7 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
           )}
         </main>
 
-        <nav className="fixed bottom-0 left-1/2 z-40 grid w-full max-w-md -translate-x-1/2 grid-cols-5 gap-1 border-t border-white/70 bg-[#fff8f0]/90 px-3 pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl">
+        <nav className="fixed bottom-0 left-1/2 z-40 grid w-full max-w-md -translate-x-1/2 grid-cols-4 gap-1 border-t border-white/70 bg-[#fff8f0]/90 px-3 pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl">
           {navItems.map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -509,7 +512,7 @@ function OptionGroup({ title, children }: { title: string; children: ReactNode }
   return <div className="mt-4"><p className="mb-2 text-xs font-black text-[#a08182]">{title}</p><div className="flex flex-wrap gap-2">{children}</div></div>;
 }
 
-function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; selectedVoiceId: string; voiceConfig: VoiceRuntimeConfig; audioState: LoadState; error: string; onVoiceSelect: (id: string) => void; onVoiceConfigChange: (config: VoiceRuntimeConfig) => void; onSynthesize: () => void; onGoGenerate: () => void }) {
+function PlayerPage(props: { story?: StoryRecord; stories: StoryRecord[]; voiceName: string; voiceConfig: VoiceRuntimeConfig; audioState: LoadState; error: string; onVoiceConfigChange: (config: VoiceRuntimeConfig) => void; onSynthesize: () => void; onGoGenerate: () => void; onPlayStory: (story: StoryRecord) => void; onEditStory: (story: StoryRecord) => void; onDeleteStory: (id: string) => void }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -524,128 +527,110 @@ function PlayerPage(props: { story?: StoryRecord; voices: VoiceProfile[]; select
     props.onVoiceConfigChange({ ...props.voiceConfig, playbackRate: normalizedRate });
     if (audioRef.current) audioRef.current.playbackRate = normalizedRate;
   };
-  if (!props.story) return <EmptyState text="还没有故事。先生成一篇胎教故事，再来这里播放。" action="去生成" onAction={props.onGoGenerate} />;
+
+  if (!props.story) {
+    return <div className="space-y-4"><EmptyState text="还没有故事。先生成一篇胎教故事，再来这里播放。" action="去生成" onAction={props.onGoGenerate} /><RecentHistoryList stories={props.stories} currentStoryId="" onPlay={props.onPlayStory} onEdit={props.onEditStory} onDelete={props.onDeleteStory} /></div>;
+  }
+
   const audio = props.story.audio;
   const audioSrc = audio?.audioUrl || audio?.dataUrl || '';
-  const isExpired = Boolean(audio?.expiresAt && Date.now() / 1000 > audio.expiresAt);
+  const isExpired = isAudioExpired(audio);
   const toggle = () => {
     if (!audioRef.current || isExpired) return;
     applyPlaybackRate();
     if (audioRef.current.paused) audioRef.current.play(); else audioRef.current.pause();
   };
+
   return (
     <div className="space-y-4">
       <Card className="text-center"><div className="mx-auto grid h-24 w-24 place-items-center rounded-full bg-[#ead7ea] text-[#76506f]"><Heart size={42} fill="currentColor" /></div><h2 className="mt-5 text-xl font-black">{props.story.title}</h2><p className="mt-2 text-sm font-bold text-[#9b7b80]">{lengthLabels[props.story.length]} · {toneLabels[props.story.tone]}</p></Card>
+
       <Card>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="font-black">朗读声音</h3>
-            <p className="mt-1 text-xs font-bold text-[#9b7b80]">切换声音后，需要重新生成朗读音频。</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {props.voices.map(voice => (
-            <button
-              key={voice.id}
-              type="button"
-              onClick={() => props.onVoiceSelect(voice.id)}
-              className={cn('h-12 rounded-2xl border text-sm font-black transition', props.selectedVoiceId === voice.id ? 'border-[#8c6380] bg-[#ead7ea] text-[#6f536b]' : 'border-[#eadcda] bg-[#fffaf5] text-[#8c7470]')}
-            >
-              {voice.name}
+        {audio ? (
+          <>
+            <audio ref={audioRef} src={audioSrc} onLoadedMetadata={applyPlaybackRate} onPlay={() => { applyPlaybackRate(); setPlaying(true); }} onPause={() => setPlaying(false)} onTimeUpdate={event => setProgress((event.currentTarget.currentTime / (event.currentTarget.duration || 1)) * 100)} onEnded={() => setPlaying(false)} />
+            <div className="flex items-center justify-between gap-3 text-xs font-black text-[#9b7b80]"><span>{audio.voiceName}</span><span>{audio.provider === 'bailian' ? `百炼真实音频 · ${formatPlaybackRate(playbackRate)}` : `${Math.round(audio.duration || 0)} 秒 · ${formatPlaybackRate(playbackRate)}`}</span></div>
+            {audio.provider === 'bailian' && <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">百炼返回的音频链接有有效期，这不是前端设置。{audio.expiresAt ? `本段有效至 ${new Date(audio.expiresAt * 1000).toLocaleString()}，` : ''}过期后重新生成即可再次收听。</p>}
+            {isExpired && <p className="mt-3 rounded-2xl bg-[#fff0f0] p-3 text-xs font-black leading-5 text-[#a9525e]">这段音频已经过期，请重新生成朗读。</p>}
+            <input type="range" min={0} max={100} value={progress} onChange={event => { const next = Number(event.target.value); setProgress(next); if (audioRef.current) audioRef.current.currentTime = ((audioRef.current.duration || audio.duration || 1) * next) / 100; }} className="mt-5 w-full accent-[#76506f]" />
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <button type="button" onClick={toggle} disabled={isExpired || !audioSrc} className="grid h-16 w-16 place-items-center rounded-full bg-[#6f536b] text-white disabled:opacity-50">{playing ? <Pause size={28} /> : <Play size={28} className="translate-x-0.5" />}</button>
+              <button type="button" onClick={props.onSynthesize} disabled={props.audioState === 'loading'} className="flex h-12 items-center justify-center gap-2 rounded-full bg-[#efe5e1] px-5 text-xs font-black text-[#735f5a] disabled:opacity-60" aria-label="重新生成音频">{props.audioState === 'loading' ? <Loader2 className="animate-spin" size={18} /> : <RotateCcw size={18} />}{isExpired ? '重新生成' : '重生成'}</button>
+            </div>
+          </>
+        ) : (
+          <div className="text-center">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f1e3f0] text-[#76506f]"><Volume2 size={24} /></div>
+            <p className="mt-4 text-sm font-bold leading-6 text-[#8c7470]">这篇故事还没有朗读音频。</p>
+            <p className="mt-1 text-xs font-bold text-[#9b7b80]">将使用设置页的默认声音：{props.voiceName}</p>
+            <button type="button" disabled={props.audioState === 'loading'} onClick={props.onSynthesize} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#6f536b] text-sm font-black text-white disabled:opacity-60">
+              {props.audioState === 'loading' ? <Loader2 className="animate-spin" size={18} /> : <Volume2 size={18} />}
+              {props.audioState === 'loading' ? '正在生成朗读' : '生成朗读'}
             </button>
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h3 className="text-sm font-black">播放速度</h3>
+          <span className="text-xs font-black text-[#9b7b80]">{formatPlaybackRate(playbackRate)}</span>
+        </div>
+        <input type="range" min={0.7} max={1.25} step={0.01} value={playbackRate} onChange={event => handlePlaybackRateChange(Number(event.target.value))} className="w-full accent-[#76506f]" aria-label="播放倍速" />
+        <div className="mt-1 flex items-center justify-between text-[10px] font-black text-[#b69a99]"><span>0.70x</span><span>自由调节</span><span>1.25x</span></div>
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {playbackRateOptions.map(rate => (
+            <button key={rate} type="button" onClick={() => handlePlaybackRateChange(rate)} className={cn('h-10 rounded-2xl border text-xs font-black transition', Math.abs(playbackRate - rate) < 0.005 ? 'border-[#8c6380] bg-[#ead7ea] text-[#6f536b]' : 'border-[#eadcda] bg-[#fffaf5] text-[#8c7470]')}>{formatPlaybackRate(rate)}</button>
           ))}
         </div>
-        <div className="mt-5">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-black">播放倍速</h3>
-            <span className="text-xs font-black text-[#9b7b80]">{formatPlaybackRate(playbackRate)}</span>
-          </div>
-          <input
-            type="range"
-            min={0.7}
-            max={1.25}
-            step={0.01}
-            value={playbackRate}
-            onChange={event => handlePlaybackRateChange(Number(event.target.value))}
-            className="w-full accent-[#76506f]"
-            aria-label="播放倍速"
-          />
-          <div className="mt-1 flex items-center justify-between text-[10px] font-black text-[#b69a99]">
-            <span>0.70x</span>
-            <span>自由调节</span>
-            <span>1.25x</span>
-          </div>
-          <div className="mt-3 grid grid-cols-4 gap-2">
-            {playbackRateOptions.map(rate => (
-              <button
-                key={rate}
-                type="button"
-                onClick={() => handlePlaybackRateChange(rate)}
-                className={cn('h-10 rounded-2xl border text-xs font-black transition', Math.abs(playbackRate - rate) < 0.005 ? 'border-[#8c6380] bg-[#ead7ea] text-[#6f536b]' : 'border-[#eadcda] bg-[#fffaf5] text-[#8c7470]')}
-              >
-                {formatPlaybackRate(rate)}
-              </button>
-            ))}
-          </div>
-        </div>
       </Card>
-      {audio ? (
-        <Card>
-          <audio ref={audioRef} src={audioSrc} onLoadedMetadata={applyPlaybackRate} onPlay={() => { applyPlaybackRate(); setPlaying(true); }} onPause={() => setPlaying(false)} onTimeUpdate={event => setProgress((event.currentTarget.currentTime / (event.currentTarget.duration || 1)) * 100)} onEnded={() => setPlaying(false)} />
-          <div className="flex items-center justify-between text-xs font-black text-[#9b7b80]"><span>{audio.voiceName}</span><span>{audio.provider === 'bailian' ? `百炼真实音频 · ${formatPlaybackRate(playbackRate)}` : `${Math.round(audio.duration || 0)} 秒 · ${formatPlaybackRate(playbackRate)}`}</span></div>
-          {audio.provider === 'bailian' && <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">百炼真实音频{audio.model ? ` · ${audio.model}` : ''}{audio.expiresAt ? ` · 过期时间 ${new Date(audio.expiresAt * 1000).toLocaleString()}` : ''}</p>}
-          {isExpired && <p className="mt-3 rounded-2xl bg-[#fff0f0] p-3 text-xs font-black leading-5 text-[#a9525e]">这段百炼音频 URL 已过期，请重新生成朗读。</p>}
-          <input type="range" min={0} max={100} value={progress} onChange={event => { const next = Number(event.target.value); setProgress(next); if (audioRef.current) audioRef.current.currentTime = ((audioRef.current.duration || audio.duration || 1) * next) / 100; }} className="mt-5 w-full accent-[#76506f]" />
-          <div className="mt-5 flex items-center justify-center gap-3"><button type="button" onClick={toggle} disabled={isExpired || !audioSrc} className="grid h-16 w-16 place-items-center rounded-full bg-[#6f536b] text-white disabled:opacity-50">{playing ? <Pause size={28} /> : <Play size={28} className="translate-x-0.5" />}</button><button type="button" onClick={props.onSynthesize} disabled={props.audioState === 'loading'} className="grid h-12 w-12 place-items-center rounded-full bg-[#efe5e1] text-[#735f5a] disabled:opacity-60" aria-label="重新生成音频">{props.audioState === 'loading' ? <Loader2 className="animate-spin" size={18} /> : <RotateCcw size={18} />}</button></div>
-        </Card>
-      ) : (
-        <Card className="text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f1e3f0] text-[#76506f]"><Volume2 size={24} /></div>
-          <p className="mt-4 text-sm font-bold leading-6 text-[#8c7470]">这篇故事还没有朗读音频。</p>
-          <button type="button" disabled={props.audioState === 'loading'} onClick={props.onSynthesize} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#6f536b] text-sm font-black text-white disabled:opacity-60">
-            {props.audioState === 'loading' ? <Loader2 className="animate-spin" size={18} /> : <Volume2 size={18} />}
-            {props.audioState === 'loading' ? '正在生成朗读' : '生成朗读'}
-          </button>
-        </Card>
-      )}
+
       {props.audioState === 'error' && <ErrorState text={props.error} />}
+      <RecentHistoryList stories={props.stories} currentStoryId={props.story.id} onPlay={props.onPlayStory} onEdit={props.onEditStory} onDelete={props.onDeleteStory} />
     </div>
   );
 }
 
-function HistoryPage(props: { stories: StoryRecord[]; onPlay: (story: StoryRecord) => void; onEdit: (story: StoryRecord) => void; onDelete: (id: string) => void }) {
-  if (!props.stories.length) return <EmptyState text="历史里还没有故事。每天写一篇，宝宝会慢慢拥有自己的小书架。" />;
+function RecentHistoryList(props: { stories: StoryRecord[]; currentStoryId: string; onPlay: (story: StoryRecord) => void; onEdit: (story: StoryRecord) => void; onDelete: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const recentStories = useMemo(() => {
+    const cutoff = Date.now() - 3 * 86400000;
+    return props.stories.filter(story => {
+      const time = new Date(story.createdAt).getTime();
+      return Number.isFinite(time) && time >= cutoff;
+    });
+  }, [props.stories]);
+
   return (
-    <div className="space-y-3">
-      {props.stories.map(story => (
-        <div key={story.id}>
-          <Card>
-            <div className="flex items-start gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-full bg-[#f1e3f0] text-[#76506f]"><CalendarDays size={19} /></div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs font-black text-[#a08182]">{formatDate(story.createdAt)}</p>
-                    <h3 className="mt-1 font-black">{story.title}</h3>
-                  </div>
-                  <span className={cn('shrink-0 rounded-full px-2 py-1 text-[10px] font-black', story.audio ? 'bg-[#f1e3f0] text-[#76506f]' : 'bg-[#fff4df] text-[#8c6d4d]')}>{story.audio ? '已有朗读' : '未朗读'}</span>
+    <Card>
+      <button type="button" onClick={() => setOpen(value => !value)} className="flex w-full items-center justify-between gap-3 text-left">
+        <span className="flex min-w-0 items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f1e3f0] text-[#76506f]"><BookOpen size={18} /></span><span className="min-w-0"><strong className="block text-sm font-black text-[#403632]">近三天故事</strong><span className="mt-1 block text-xs font-bold text-[#9b7b80]">{recentStories.length ? `${recentStories.length} 篇，可展开查看` : '最近三天还没有故事'}</span></span></span>
+        <ChevronRight size={18} className={cn('shrink-0 text-[#b79b9a] transition', open && 'rotate-90')} />
+      </button>
+      {open && (
+        <div className="mt-4 space-y-3">
+          {recentStories.length ? recentStories.map(story => (
+            <div key={story.id} className={cn('rounded-3xl border p-3', props.currentStoryId === story.id ? 'border-[#8c6380] bg-[#f8f0f5]' : 'border-[#eadcda] bg-[#fffaf5]')}>
+              <div className="flex items-start gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#76506f]"><CalendarDays size={18} /></div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="text-xs font-black text-[#a08182]">{formatDate(story.createdAt)}</p><h3 className="mt-1 truncate font-black">{story.title}</h3></div><span className={cn('shrink-0 rounded-full px-2 py-1 text-[10px] font-black', isAudioExpired(story.audio) ? 'bg-[#fff0f0] text-[#a9525e]' : story.audio ? 'bg-[#f1e3f0] text-[#76506f]' : 'bg-[#fff4df] text-[#8c6d4d]')}>{isAudioExpired(story.audio) ? '已过期' : story.audio ? '已有朗读' : '未朗读'}</span></div>
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#8c7470]">{story.body}</p>
                 </div>
-                <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#8c7470]">{story.body}</p>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <button type="button" onClick={() => props.onPlay(story)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#6f536b] text-xs font-black text-white"><Play size={15} />播放</button>
+                <button type="button" onClick={() => props.onEdit(story)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#efe5e1] text-xs font-black text-[#735f5a]"><Pencil size={15} />编辑</button>
+                <button type="button" onClick={() => props.onDelete(story.id)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#fff0f0] text-xs font-black text-[#a9525e]"><Trash2 size={15} />删除</button>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <button type="button" onClick={() => props.onPlay(story)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#6f536b] text-xs font-black text-white"><Play size={15} />播放</button>
-              <button type="button" onClick={() => props.onEdit(story)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#efe5e1] text-xs font-black text-[#735f5a]"><Pencil size={15} />编辑</button>
-              <button type="button" onClick={() => props.onDelete(story.id)} className="flex h-10 items-center justify-center gap-1 rounded-2xl bg-[#fff0f0] text-xs font-black text-[#a9525e]"><Trash2 size={15} />删除</button>
-            </div>
-          </Card>
+          )) : <p className="rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold leading-6 text-[#8c7470]">最近三天还没有故事，生成一篇后会出现在这里。</p>}
         </div>
-      ))}
-    </div>
+      )}
+    </Card>
   );
 }
-
-function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntimeConfig; onSettingsChange: (settings: BabySettings) => void; onVoiceConfigChange: (config: VoiceRuntimeConfig) => void; onClear: () => void; onBackToToolbox?: () => void }) {
+function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntimeConfig; voices: VoiceProfile[]; onSettingsChange: (settings: BabySettings) => void; onVoiceConfigChange: (config: VoiceRuntimeConfig) => void; onClear: () => void; onBackToToolbox?: () => void }) {
   const [local, setLocal] = useState(props.settings);
   const [voiceLocal, setVoiceLocal] = useState(props.voiceConfig);
   const [workerCodeCopied, setWorkerCodeCopied] = useState(false);
@@ -712,6 +697,7 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
       <Card>
         <h2 className="text-lg font-black">服务配置 · 百炼朗读</h2>
         <p className="mt-2 text-sm leading-6 text-[#8c7470]">爸爸/妈妈真实音色 ID 在 Cloudflare Worker 后台维护，前端只发送 papa 或 mama。</p>
+        <SettingsField label="默认朗读声音"><select value={local.defaultVoiceId} onChange={event => update({ defaultVoiceId: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">{props.voices.map(voice => <option key={voice.id} value={voice.id}>{voice.name}</option>)}</select></SettingsField>
         <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>启用百炼真实语音</span><input type="checkbox" checked={voiceLocal.realVoiceEnabled} onChange={event => updateVoice({ realVoiceEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
         <label className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>Worker 不可用时使用本地兜底</span><input type="checkbox" checked={voiceLocal.mockFallbackEnabled} onChange={event => updateVoice({ mockFallbackEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
         <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">模型、音色 ID、朗读参数都由 Worker 和百炼后台控制，前端不再配置。</p>
