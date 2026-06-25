@@ -81,12 +81,7 @@ export async function generateStory(input: GenerateStoryInput, config?: StoryGen
       const response = await fetch(joinWorkerUrl(config.workerBaseUrl, '/api/story/generate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...input,
-          provider: config.storyProvider,
-          model: config.storyModel,
-          temperature: config.storyTemperature,
-        }),
+        body: JSON.stringify(input),
       });
       if (!response.ok) throw new Error(await readApiError(response));
       const data = await response.json() as Record<string, unknown>;
@@ -99,6 +94,7 @@ export async function generateStory(input: GenerateStoryInput, config?: StoryGen
 
   return generateMockStory(input);
 }
+
 const encodeWav = (samples: Float32Array, sampleRate: number) => {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buffer);

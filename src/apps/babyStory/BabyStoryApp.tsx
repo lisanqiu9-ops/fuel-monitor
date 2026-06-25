@@ -656,24 +656,13 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
       <Card><h2 className="text-lg font-black">默认偏好</h2><SettingsField label="默认长度"><select value={local.defaultLength} onChange={event => update({ defaultLength: event.target.value as StoryLength })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">{Object.entries(lengthLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></SettingsField><SettingsField label="默认风格"><select value={local.defaultStyle} onChange={event => update({ defaultStyle: event.target.value as StoryStyle })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">{Object.entries(styleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></SettingsField></Card>
       <Card>
         <h2 className="text-lg font-black">AI 故事生成</h2>
-        <p className="mt-2 text-sm leading-6 text-[#8c7470]">API Key 只放在 Cloudflare Worker 里。前端只保存 Worker 地址、提供商和模型名。</p>
+        <p className="mt-2 text-sm leading-6 text-[#8c7470]">模型和 API Key 都在 Cloudflare Worker 里配置。这里填 Worker 地址并打开开关就能用。</p>
         <SettingsField label="Worker Base URL">
           <input value={voiceLocal.workerBaseUrl} onChange={event => updateVoice({ workerBaseUrl: event.target.value })} placeholder="https://your-worker.example.workers.dev" className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" />
         </SettingsField>
         <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>启用大模型生成故事</span><input type="checkbox" checked={voiceLocal.realStoryEnabled} onChange={event => updateVoice({ realStoryEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
-        <SettingsField label="模型服务">
-          <select value={voiceLocal.storyProvider} onChange={event => updateVoice({ storyProvider: event.target.value === 'deepseek' ? 'deepseek' : 'dashscope' })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">
-            <option value="dashscope">阿里云百炼 / 通义千问</option>
-            <option value="deepseek">DeepSeek</option>
-          </select>
-        </SettingsField>
-        <SettingsField label="模型名">
-          <input value={voiceLocal.storyModel} onChange={event => updateVoice({ storyModel: event.target.value })} placeholder="qwen-plus-2025-07-28" className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" />
-        </SettingsField>
-        <SettingsField label={`创意温度：${voiceLocal.storyTemperature.toFixed(2)}`}>
-          <input type="range" min={0.2} max={1.2} step={0.05} value={voiceLocal.storyTemperature} onChange={event => updateVoice({ storyTemperature: Number(event.target.value) })} className="w-full accent-[#76506f]" />
-        </SettingsField>
-        <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>Worker 不可用时使用本地 mock</span><input type="checkbox" checked={voiceLocal.storyFallbackEnabled} onChange={event => updateVoice({ storyFallbackEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
+        <label className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>失败时使用本地兜底</span><input type="checkbox" checked={voiceLocal.storyFallbackEnabled} onChange={event => updateVoice({ storyFallbackEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
+        <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">当前 Worker 默认使用 Cloudflare 中的 DASHSCOPE_STORY_MODEL；要换模型，只改 Worker 变量。</p>
       </Card>
       <Card>
         <h2 className="text-lg font-black">百炼朗读</h2>
@@ -681,7 +670,7 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
         <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>启用百炼真实语音</span><input type="checkbox" checked={voiceLocal.realVoiceEnabled} onChange={event => updateVoice({ realVoiceEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
         <label className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>Worker 不可用时使用 mock</span><input type="checkbox" checked={voiceLocal.mockFallbackEnabled} onChange={event => updateVoice({ mockFallbackEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
         <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">模型、音色 ID、朗读参数都由 Worker 和百炼后台控制，前端不再配置。</p>
-      </Card>      <Card><h2 className="text-lg font-black">缓存</h2><p className="mt-2 text-sm leading-6 text-[#8c7470]">故事、音色配置和 mock 音频保存在本机浏览器。清理后不可恢复。</p><button type="button" onClick={props.onClear} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#fff0f0] text-sm font-black text-[#a9525e]"><Trash2 size={17} />清理故事与音色缓存</button></Card>
+      </Card>`r`n      <Card><h2 className="text-lg font-black">缓存</h2><p className="mt-2 text-sm leading-6 text-[#8c7470]">故事、音色配置和 mock 音频保存在本机浏览器。清理后不可恢复。</p><button type="button" onClick={props.onClear} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#fff0f0] text-sm font-black text-[#a9525e]"><Trash2 size={17} />清理故事与音色缓存</button></Card>
       {props.onBackToToolbox && <Card><button type="button" onClick={props.onBackToToolbox} className="flex w-full items-center justify-between gap-4 text-left"><span className="flex min-w-0 items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#f1e3f0] text-[#76506f]"><PackageOpen size={19} /></span><span className="min-w-0"><strong className="block text-sm font-black text-[#403632]">返回三秋工具箱</strong><span className="mt-1 block text-xs font-bold text-[#9b7b80]">切换到其他个人工具</span></span></span><ChevronRight size={18} className="shrink-0 text-[#b79b9a]" /></button></Card>}
     </div>
   );
