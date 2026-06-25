@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { loadInitialData, saveRecords } from '../../data';
 import { FuelRecord } from '../../types';
 import { OverviewTab } from '../../components/OverviewTab';
@@ -9,7 +9,7 @@ import { RecordDetailModal } from '../../components/RecordDetailModal';
 import { SettingsTab } from '../../components/SettingsTab';
 import { AnalysisReportTab } from '../../components/AnalysisReportTab';
 import { OcrCaptureModal } from '../../components/OcrCaptureModal';
-import { Droplet, BarChart2, PlusCircle, Settings, Palette, Check, ClipboardList, PackageOpen } from 'lucide-react';
+import { Droplet, BarChart2, PlusCircle, Settings, ClipboardList, PackageOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { checkOcrConfig } from '../../lib/ocr';
@@ -40,7 +40,6 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
   const [selectedRecord, setSelectedRecord] = useState<FuelRecord | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [theme, setTheme] = useState<ThemeId>('collectui');
-  const [showThemePicker, setShowThemePicker] = useState(false);
   const [showOcrCapture, setShowOcrCapture] = useState(false);
   const [ocrLaunchRequest, setOcrLaunchRequest] = useState(0);
   const [ocrPrefillRequest, setOcrPrefillRequest] = useState(0);
@@ -127,56 +126,17 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
             {currentTab.title}
           </h1>
         </div>
-        <div className="flex shrink-0 items-start gap-2">
-          {onBackToToolbox && (
-            <button
-              type="button"
-              onClick={onBackToToolbox}
-              className="theme-trigger mt-1 grid place-items-center rounded-full border border-white/10 bg-[#0d0f14] text-[#e8ecf4] active:bg-white/5"
-              aria-label="返回三秋工具箱"
-              title="返回三秋工具箱"
-            >
-              <PackageOpen size={18} />
-            </button>
-          )}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowThemePicker(prev => !prev)}
-              className="theme-trigger mt-1 grid place-items-center rounded-full border border-white/10 bg-[#0d0f14] text-[#e8ecf4] active:bg-white/5"
-              aria-label="切换主题"
-              title="切换主题"
-            >
-              <Palette size={18} />
-            </button>
-            <AnimatePresence>
-            {showThemePicker && (
-              <motion.div
-                initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                transition={{ duration: 0.16 }}
-                className="theme-menu absolute right-0 top-12 z-50 w-40 overflow-hidden rounded-xl border border-white/10 bg-[#1a1e2a] shadow-2xl"
-              >
-                {themeOptions.map(option => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => {
-                      setTheme(option.id);
-                      setShowThemePicker(false);
-                    }}
-                    className="theme-menu-item flex w-full items-center justify-between px-3 py-2.5 text-left text-sm text-[#e8ecf4] active:bg-white/5"
-                  >
-                    <span>{option.name}</span>
-                    {theme === option.id && <Check size={15} className="text-[#f5a623]" />}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-            </AnimatePresence>
-          </div>
-        </div>
+        {onBackToToolbox && (
+          <button
+            type="button"
+            onClick={onBackToToolbox}
+            className="theme-trigger mt-1 grid shrink-0 place-items-center rounded-full border border-white/10 bg-[#0d0f14] text-[#e8ecf4] active:bg-white/5"
+            aria-label="返回三秋工具箱"
+            title="返回三秋工具箱"
+          >
+            <PackageOpen size={18} />
+          </button>
+        )}
       </div>
 
       <div className="app-scroll flex-1 overflow-y-auto relative">
@@ -203,7 +163,7 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
           )}
           {activeTab === 'settings' && (
             <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <SettingsTab records={records} onRecordsChange={handleReplaceRecords} onBackToToolbox={onBackToToolbox} />
+              <SettingsTab records={records} onRecordsChange={handleReplaceRecords} onBackToToolbox={onBackToToolbox} theme={theme} themeOptions={themeOptions} onThemeChange={setTheme} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -278,3 +238,4 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
     </div>
   );
 }
+

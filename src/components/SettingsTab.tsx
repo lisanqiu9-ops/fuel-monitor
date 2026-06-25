@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ComponentType, type ReactNode } from 'react';
+﻿import { useEffect, useRef, useState, type ChangeEvent, type ComponentType, type ReactNode } from 'react';
 import {
   AlertTriangle,
   Check,
@@ -12,6 +12,7 @@ import {
   FileSpreadsheet,
   Info,
   MessageCircle,
+  Palette,
   PackageOpen,
   ScanLine,
   Shield,
@@ -127,13 +128,16 @@ interface Props {
   records: FuelRecord[];
   onRecordsChange: (records: FuelRecord[]) => void;
   onBackToToolbox?: () => void;
+  theme?: string;
+  themeOptions?: readonly { id: string; name: string }[];
+  onThemeChange?: (theme: any) => void;
 }
 
 type StatusState = { type: 'idle' | 'testing' | 'success' | 'error'; msg: string };
 type ImportMode = 'replace' | 'merge';
-type PanelId = 'ocr' | 'import' | 'security' | 'about' | null;
+type PanelId = 'ocr' | 'import' | 'theme' | 'security' | 'about' | null;
 
-export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props) {
+export function SettingsTab({ records, onRecordsChange, onBackToToolbox, theme, themeOptions = [], onThemeChange }: Props) {
   const [workerUrl, setWorkerUrl] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [showGuide, setShowGuide] = useState(false);
@@ -247,6 +251,7 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
   };
 
   const ocrStatusText = workerUrl.trim() ? '已配置' : '未配置';
+  const themeName = themeOptions.find(option => option.id === theme)?.name || '默认';
   const syncStatusText = '本地 JSON';
   const totalCost = records.reduce((sum, record) => sum + record.totalCost, 0);
   const validFuel = records.filter(record => record.actualFuelPer100 !== null);
@@ -300,6 +305,7 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
       <SettingsGroup title="数据">
         <SettingsRow icon={Database} label="数据导入" value="默认合并去重" onClick={() => openPanel('import')} />
         <SettingsRow icon={ScanLine} label="OCR 识别设置" value={ocrStatusText} onClick={() => openPanel('ocr')} />
+        {themeOptions.length > 0 && onThemeChange && <SettingsRow icon={Palette} label="界面主题" value={themeName} onClick={() => openPanel('theme')} />}
         <SettingsRow icon={MessageCircle} label="问题反馈" onClick={() => openPanel('about')} />
       </SettingsGroup>
 
@@ -396,6 +402,40 @@ export function SettingsTab({ records, onRecordsChange, onBackToToolbox }: Props
             </button>
             <input ref={importInputRef} type="file" accept="application/json,.json" className="hidden" onChange={handleImport} />
             {renderStatus(dataMsg)}
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {activePanel === 'theme' && themeOptions.length > 0 && onThemeChange && (
+          <motion.section
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="settings-panel"
+          >
+            <div className="settings-panel-head">
+              <div>
+                <span>界面主题</span>
+                <p>主题属于低频偏好，已从页面顶部移到这里。</p>
+              </div>
+              <button type="button" onClick={() => setActivePanel(null)}>×</button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 settings-segment">
+              {themeOptions.map(option => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => {
+                    onThemeChange(option.id);
+                    setActivePanel(null);
+                  }}
+                  className={theme === option.id ? 'is-active' : ''}
+                >
+                  {option.name}
+                </button>
+              ))}
+            </div>
           </motion.section>
         )}
       </AnimatePresence>
@@ -570,3 +610,6 @@ function InfoPanel({
     </motion.section>
   );
 }
+
+
+
