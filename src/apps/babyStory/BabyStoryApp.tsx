@@ -3,8 +3,10 @@ import {
   Baby,
   BookOpen,
   CalendarDays,
+  Check,
   ChevronRight,
   Clock,
+  Copy,
   Heart,
   Home,
   Loader2,
@@ -20,6 +22,7 @@ import {
   Volume2,
   Wand2,
 } from 'lucide-react';
+import workerCode from '../../../worker/src/index.ts?raw';
 import { generateStory, synthesizeSpeech } from './api';
 import {
   clearBabyStoryCache,
@@ -619,10 +622,16 @@ function HistoryPage(props: { stories: StoryRecord[]; onPlay: (story: StoryRecor
 function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntimeConfig; onSettingsChange: (settings: BabySettings) => void; onVoiceConfigChange: (config: VoiceRuntimeConfig) => void; onClear: () => void; onBackToToolbox?: () => void }) {
   const [local, setLocal] = useState(props.settings);
   const [voiceLocal, setVoiceLocal] = useState(props.voiceConfig);
+  const [workerCodeCopied, setWorkerCodeCopied] = useState(false);
   useEffect(() => setLocal(props.settings), [props.settings]);
   useEffect(() => setVoiceLocal(props.voiceConfig), [props.voiceConfig]);
   const update = (patch: Partial<BabySettings>) => { const next = { ...local, ...patch }; setLocal(next); props.onSettingsChange(next); };
   const updateVoice = (patch: Partial<VoiceRuntimeConfig>) => { const next = { ...voiceLocal, ...patch }; setVoiceLocal(next); props.onVoiceConfigChange(next); };
+  const copyWorkerCode = async () => {
+    await navigator.clipboard.writeText(workerCode);
+    setWorkerCodeCopied(true);
+    window.setTimeout(() => setWorkerCodeCopied(false), 1800);
+  };
   return (
     <div className="space-y-4">
       <Card>
@@ -663,6 +672,16 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
         <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>启用大模型生成故事</span><input type="checkbox" checked={voiceLocal.realStoryEnabled} onChange={event => updateVoice({ realStoryEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
         <label className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>失败时使用本地兜底</span><input type="checkbox" checked={voiceLocal.storyFallbackEnabled} onChange={event => updateVoice({ storyFallbackEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
         <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">当前 Worker 默认使用 Cloudflare 中的 DASHSCOPE_STORY_MODEL；要换模型，只改 Worker 变量。</p>
+        <details className="mt-3 overflow-hidden rounded-2xl bg-[#fffaf5] text-xs font-bold text-[#735f5a]">
+          <summary className="cursor-pointer px-3 py-3">复制 Cloudflare Worker 代码</summary>
+          <div className="border-t border-[#eadcda] p-3">
+            <button type="button" onClick={copyWorkerCode} className="mb-2 flex h-9 items-center justify-center gap-2 rounded-2xl bg-[#6f536b] px-4 text-xs font-black text-white">
+              {workerCodeCopied ? <Check size={15} /> : <Copy size={15} />}
+              {workerCodeCopied ? '已复制' : '复制代码'}
+            </button>
+            <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-2xl bg-[#3f3540] p-3 text-[10px] font-semibold leading-5 text-[#fffaf5]">{workerCode}</pre>
+          </div>
+        </details>
       </Card>
       <Card>
         <h2 className="text-lg font-black">百炼朗读</h2>
