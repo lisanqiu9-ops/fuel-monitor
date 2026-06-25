@@ -1,17 +1,16 @@
 import { FuelRecord } from '../types';
 import { cn } from '../lib/utils';
-import { Camera, ChevronRight, Clock, Fuel, Gauge, History, PlusCircle, Route } from 'lucide-react';
+import { Camera, ChevronRight, Clock, Fuel, Gauge, Route } from 'lucide-react';
 
 interface Props {
   records: FuelRecord[];
   onRecordClick: (record: FuelRecord) => void;
-  onGoAdd: () => void;
   onGoRecognize: () => void;
   onGoTrend: () => void;
   onOpenHistory: () => void;
 }
 
-export function OverviewTab({ records, onRecordClick, onGoAdd, onGoRecognize, onGoTrend, onOpenHistory }: Props) {
+export function OverviewTab({ records, onRecordClick, onGoRecognize, onGoTrend, onOpenHistory }: Props) {
   const totalCount = records.length;
   const totalLiters = records.reduce((sum, r) => sum + r.fuelLiters, 0);
   const totalCost = records.reduce((sum, r) => sum + r.totalCost, 0);
@@ -47,21 +46,17 @@ export function OverviewTab({ records, onRecordClick, onGoAdd, onGoRecognize, on
         </div>
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-[#1a1e2a] p-3 shadow-[0_12px_26px_rgba(0,0,0,0.12)]">
-        <button type="button" onClick={onGoRecognize} className="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl bg-[#f5a623] px-4 text-left text-black active:bg-[#d48c1a]">
+      <section className="rounded-[26px] border border-white/80 bg-white/74 p-3 shadow-[0_14px_30px_rgba(91,72,72,0.08)] backdrop-blur">
+        <button type="button" onClick={onGoRecognize} className="group flex min-h-16 w-full items-center justify-between gap-3 rounded-[22px] bg-[#fffaf4] px-4 text-left shadow-[inset_0_0_0_1px_rgba(255,255,255,0.82)] active:scale-[0.99]">
           <span className="flex min-w-0 items-center gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-black/10"><Camera size={20} /></span>
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#6f536b] text-white shadow-[0_10px_22px_rgba(111,83,107,0.20)]"><Camera size={20} /></span>
             <span className="min-w-0">
-              <strong className="block text-sm font-black">拍照识别</strong>
-              <span className="mt-0.5 block text-[11px] font-bold opacity-75">优先识别小票和仪表盘，再确认保存</span>
+              <strong className="block text-base font-black text-[#403632]">拍照识别</strong>
+              <span className="mt-1 block text-xs font-bold leading-5 text-[#8b7471]">识别小票和仪表盘，确认后自动生成记录</span>
             </span>
           </span>
-          <ChevronRight size={18} className="shrink-0" />
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f1e8e3] text-[#7d6965] transition group-active:translate-x-0.5"><ChevronRight size={17} /></span>
         </button>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <button type="button" onClick={onGoAdd} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#0d0f14] text-xs font-bold text-[#e8ecf4] active:bg-white/5"><PlusCircle size={16} />手动添加</button>
-          <button type="button" onClick={onOpenHistory} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#0d0f14] text-xs font-bold text-[#e8ecf4] active:bg-white/5"><History size={16} />历史记录</button>
-        </div>
       </section>
 
       <button type="button" onClick={onGoTrend} className="balance-strip w-full text-left">
@@ -115,11 +110,8 @@ export function OverviewTab({ records, onRecordClick, onGoAdd, onGoRecognize, on
         {recentRecords.length === 0 ? (
           <div className="empty-soft">
             <div>暂无记录</div>
-            <p className="mt-1 text-[11px] text-[#6b7a99]">可以先拍照识别小票，也可以手动录入第一条。</p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button type="button" onClick={onGoRecognize} className="rounded-lg bg-[#f5a623] px-3 py-2 text-xs font-black text-black">拍照识别</button>
-              <button type="button" onClick={onGoAdd} className="rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-xs font-black text-[#e8ecf4]">手动添加</button>
-            </div>
+            <p className="mt-1 text-[11px] text-[#6b7a99]">建议先拍照识别小票；需要手动录入时可使用底部“记录”。</p>
+            <button type="button" onClick={onGoRecognize} className="mt-3 rounded-lg bg-[#f5a623] px-4 py-2 text-xs font-black text-black">拍照识别</button>
           </div>
         ) : (
           <div className="activity-list">

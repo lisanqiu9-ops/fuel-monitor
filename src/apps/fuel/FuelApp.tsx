@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { loadInitialData, saveRecords } from '../../data';
 import { FuelRecord } from '../../types';
 import { OverviewTab } from '../../components/OverviewTab';
@@ -143,7 +143,7 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
         <AnimatePresence mode="wait">
           {activeTab === 'overview' && (
             <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <OverviewTab records={records} onRecordClick={setSelectedRecord} onGoAdd={() => setActiveTab('add')} onGoRecognize={handleGoRecognize} onGoTrend={() => setActiveTab('trend')} onOpenHistory={() => setShowHistory(true)} />
+              <OverviewTab records={records} onRecordClick={setSelectedRecord} onGoRecognize={handleGoRecognize} onGoTrend={() => setActiveTab('trend')} onOpenHistory={() => setShowHistory(true)} />
             </motion.div>
           )}
           {activeTab === 'trend' && (
@@ -238,4 +238,3 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
     </div>
   );
 }
-
