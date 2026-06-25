@@ -3,6 +3,7 @@ export type StoryStyle = 'forest' | 'ocean' | 'star' | 'daily' | 'poem';
 export type ReadingTone = 'soft' | 'happy' | 'sleepy';
 export type VoiceKind = 'system' | 'custom';
 export type VoiceProvider = 'system' | 'bailian' | 'mock';
+export type StoryGenerationProvider = 'dashscope' | 'deepseek';
 
 export interface BabySettings {
   babyName: string;
@@ -71,6 +72,14 @@ export interface GenerateStoryInput {
   tone: ReadingTone;
   babyName: string;
 }
+export interface StoryGenerationConfig {
+  workerBaseUrl: string;
+  realStoryEnabled: boolean;
+  storyFallbackEnabled: boolean;
+  storyProvider: StoryGenerationProvider;
+  storyModel: string;
+  storyTemperature: number;
+}
 
 export interface SynthesizeInput {
   storyId: string;
@@ -93,7 +102,7 @@ export interface SynthesizeResult {
   voiceKey?: string;
 }
 
-export interface VoiceRuntimeConfig {
+export interface VoiceRuntimeConfig extends StoryGenerationConfig {
   workerBaseUrl: string;
   realVoiceEnabled: boolean;
   mockFallbackEnabled: boolean;

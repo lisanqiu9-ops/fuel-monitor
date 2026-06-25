@@ -40,6 +40,11 @@ export const defaultSettings: BabySettings = {
 
 export const defaultVoiceRuntimeConfig: VoiceRuntimeConfig = {
   workerBaseUrl: '',
+  realStoryEnabled: false,
+  storyFallbackEnabled: true,
+  storyProvider: 'dashscope',
+  storyModel: 'qwen-plus-2025-07-28',
+  storyTemperature: 0.75,
   realVoiceEnabled: false,
   mockFallbackEnabled: true,
   targetModel: 'qwen3-tts-vc-2026-01-22',
@@ -103,6 +108,11 @@ export const saveVoiceRuntimeConfig = (config: VoiceRuntimeConfig) => {
     ...defaultVoiceRuntimeConfig,
     ...config,
     workerBaseUrl: config.workerBaseUrl.trim().replace(/\/+$/, ''),
+    realStoryEnabled: Boolean(config.realStoryEnabled),
+    storyFallbackEnabled: Boolean(config.storyFallbackEnabled),
+    storyProvider: config.storyProvider === 'deepseek' ? 'deepseek' : 'dashscope',
+    storyModel: (config.storyModel || defaultVoiceRuntimeConfig.storyModel).trim(),
+    storyTemperature: Math.min(1.2, Math.max(0.2, Number.isFinite(config.storyTemperature) ? config.storyTemperature : defaultVoiceRuntimeConfig.storyTemperature)),
     targetModel: defaultVoiceRuntimeConfig.targetModel,
     defaultRate: defaultVoiceRuntimeConfig.defaultRate,
     playbackRate: Math.min(1.25, Math.max(0.7, Number.isFinite(config.playbackRate) ? config.playbackRate : defaultVoiceRuntimeConfig.playbackRate)),

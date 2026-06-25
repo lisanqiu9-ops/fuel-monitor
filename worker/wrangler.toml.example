@@ -1,8 +1,12 @@
-name = "baby-story-tts-worker"
+name = "baby-story-worker"
 main = "src/index.ts"
 compatibility_date = "2026-06-16"
 
 [vars]
+DASHSCOPE_STORY_MODEL = "qwen-plus-2025-07-28"
+DEEPSEEK_STORY_MODEL = "deepseek-chat"
+STORY_PROVIDER = "dashscope"
+STORY_TEMPERATURE = "0.75"
 DASHSCOPE_TTS_MODEL = "qwen3-tts-vc-2026-01-22"
 CORS_ALLOWED_ORIGIN = "https://lisanqiu9-ops.github.io"
 # Optional non-secret JSON map. Prefer Secrets if you treat voice IDs as sensitive.
@@ -10,6 +14,7 @@ CORS_ALLOWED_ORIGIN = "https://lisanqiu9-ops.github.io"
 
 # Configure these as Cloudflare Worker Secrets, not in this file:
 # wrangler secret put DASHSCOPE_API_KEY
+# wrangler secret put DEEPSEEK_API_KEY
 # wrangler secret put DASHSCOPE_TTS_VOICE_PAPA
 # wrangler secret put DASHSCOPE_TTS_VOICE_MAMA
 #

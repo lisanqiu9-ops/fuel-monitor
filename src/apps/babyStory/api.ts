@@ -1,40 +1,104 @@
-import { GenerateStoryInput, SynthesizeInput, SynthesizeResult, StoryDraft } from './types';
+import { GenerateStoryInput, SynthesizeInput, SynthesizeResult, StoryDraft, StoryGenerationConfig } from './types';
 
 const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
 
-const styleScene = {
-  forest: ['晨雾里的小森林', '银杏叶轻轻摇动', '一只会发光的小蘑菇'],
-  ocean: ['安静的海湾', '贝壳收藏着月光', '小浪花慢慢唱歌'],
-  star: ['窗边的星星', '月亮的小邮局', '云朵铺好的小路'],
-  daily: ['家里的柔软毯子', '厨房飘来的米香', '阳台上的小风铃'],
-  poem: ['一封写给春天的信', '花瓣里的小梦', '晚风经过的小院'],
+const storyWorlds = {
+  forest: { place: '晨雾里的小森林', path: '铺满银杏叶的小路', helper: '会发光的小蘑菇', treasure: '一滴亮晶晶的露珠' },
+  ocean: { place: '安静的海湾', path: '贝壳排成的小路', helper: '慢慢唱歌的小浪花', treasure: '一枚装着月光的贝壳' },
+  star: { place: '窗边的星星邮局', path: '云朵铺好的小路', helper: '提着小灯的月亮邮差', treasure: '一封闪闪发亮的晚安信' },
+  daily: { place: '家里的柔软毯子边', path: '从厨房米香到阳台风铃的小路', helper: '会叮当回应的小风铃', treasure: '一颗暖暖的小纽扣' },
+  poem: { place: '晚风经过的小院', path: '花瓣和月光排成的小路', helper: '捧着春天来信的小花瓣', treasure: '一个轻轻发亮的小梦' },
 } as const;
 
-const lengthParagraphs = { short: 4, medium: 7, long: 10 };
-const toneWords = { soft: '轻轻地', happy: '微笑着', sleepy: '慢慢地' };
+const toneWords = {
+  soft: { move: '轻轻地', mood: '温柔地', close: '像一条柔软的小毯子' },
+  happy: { move: '微笑着', mood: '高高兴兴地', close: '像一串小小的笑声' },
+  sleepy: { move: '慢慢地', mood: '安安静静地', close: '像一朵快睡着的云' },
+};
 
-export async function generateStory(input: GenerateStoryInput): Promise<StoryDraft> {
-  await wait(650);
-  const scenes = styleScene[input.style];
-  const paragraphs = Array.from({ length: lengthParagraphs[input.length] }, (_, index) => {
-    const scene = scenes[index % scenes.length];
-    const tone = toneWords[input.tone];
-    const babyLine = index % 2 === 0
-      ? `${input.babyName}在妈妈的怀抱里听见了这份温柔。`
-      : `${input.babyName}可以安心地做一个甜甜的小梦。`;
-    return `${scene}里，有一个关于“${input.theme}”的小秘密。小风${tone}走过窗台，把一朵暖暖的光送到家里。爸爸妈妈把声音放得很低，像把云朵叠成小被子。${babyLine}`;
-  });
+const normalizeTheme = (theme: string) => theme.trim() || '今晚的小冒险';
+const heroFromTheme = (theme: string, babyName: string) => {
+  const cleaned = normalizeTheme(theme).replace(/[《》“”"]/g, '');
+  const match = cleaned.match(/^(.{1,6}?)(历险记|冒险记|奇遇记|的)/);
+  return match?.[1] || babyName || '小星星';
+};
+
+const normalizeStoryDraft = (input: GenerateStoryInput, data: Record<string, unknown>): StoryDraft => {
+  const theme = normalizeTheme(input.theme);
+  const title = String(data.title || `${theme}的小小晚安故事`).trim();
+  const body = String(data.body || '').replace(/\r\n/g, '\n').trim();
+
+  if (!body) throw new Error('大模型没有返回故事正文');
 
   return {
-    title: `${input.theme}的小小晚安信`,
+    title: title || `${theme}的小小晚安故事`,
+    body,
+    theme,
+    length: input.length,
+    style: input.style,
+    tone: input.tone,
+  };
+};
+
+async function generateMockStory(input: GenerateStoryInput): Promise<StoryDraft> {
+  await wait(650);
+  const theme = normalizeTheme(input.theme);
+  const hero = heroFromTheme(theme, input.babyName);
+  const world = storyWorlds[input.style];
+  const tone = toneWords[input.tone];
+  const arc = [
+    `今晚，爸爸妈妈把声音放得很低，给${input.babyName}讲《${theme}》。故事一开始，${hero}在${world.place}发现了${world.treasure}，它正一闪一闪，好像在说：“请把晚安送到远方。”`,
+    `${hero}${tone.move}把${world.treasure}放进口袋，沿着${world.path}往前走。路上没有可怕的东西，只有暖暖的灯光、软软的风，还有一步一步变勇敢的小脚印。`,
+    `走到半路，${world.helper}拦住了${hero}。它说，前面有一扇很小很小的门，只有说出一句温柔的话，门才会打开。${hero}想了想，${tone.mood}说：“今天辛苦啦，明天也会很好。”`,
+    `小门打开了，里面不是陌生的地方，而是一间亮着小夜灯的屋子。屋子里有一张空空的小床，正在等一份晚安。${hero}把${world.treasure}放到枕边，整间屋子都变得暖和起来。`,
+    `这时，${world.helper}告诉${hero}，真正的历险不是跑得很远，而是把心里的温柔带给需要它的人。${hero}点点头，又把一小束光收进口袋，准备带回家。`,
+    `回去的路上，风变得更轻了，灯也变得更柔了。${hero}听见远处有人在哼晚安歌，那声音${tone.close}，把白天的小忙碌都慢慢盖好。`,
+    `终于，${hero}回到故事开始的地方，把最后一束光放在窗边。窗外的星星眨了眨眼，好像在谢谢${hero}完成了这次小小的历险。`,
+    `爸爸妈妈讲到这里，也把声音放得更轻。${input.babyName}在这份温柔里听见了勇敢、善良和晚安。故事合上了，小梦打开了，今晚可以安心睡着啦。`,
+  ];
+  const paragraphsByLength = {
+    short: [arc[0], arc[1], arc[2], arc[7]],
+    medium: [arc[0], arc[1], arc[2], arc[3], arc[5], arc[7]],
+    long: arc,
+  };
+  const paragraphs = paragraphsByLength[input.length];
+
+  return {
+    title: `${theme}的小小晚安信`,
     body: paragraphs.join('\n\n'),
-    theme: input.theme,
+    theme,
     length: input.length,
     style: input.style,
     tone: input.tone,
   };
 }
 
+export async function generateStory(input: GenerateStoryInput, config?: StoryGenerationConfig): Promise<StoryDraft> {
+  const shouldUseWorker = Boolean(config?.realStoryEnabled && config.workerBaseUrl);
+
+  if (shouldUseWorker && config) {
+    try {
+      const response = await fetch(joinWorkerUrl(config.workerBaseUrl, '/api/story/generate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...input,
+          provider: config.storyProvider,
+          model: config.storyModel,
+          temperature: config.storyTemperature,
+        }),
+      });
+      if (!response.ok) throw new Error(await readApiError(response));
+      const data = await response.json() as Record<string, unknown>;
+      return normalizeStoryDraft(input, data);
+    } catch (error) {
+      if (config.storyFallbackEnabled) return generateMockStory(input);
+      throw error;
+    }
+  }
+
+  return generateMockStory(input);
+}
 const encodeWav = (samples: Float32Array, sampleRate: number) => {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buffer);

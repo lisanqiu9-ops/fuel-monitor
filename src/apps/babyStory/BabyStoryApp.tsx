@@ -70,6 +70,7 @@ const navItems = [
   { id: 'generate', label: '生成', icon: Wand2 },
   { id: 'player', label: '播放', icon: Play },
   { id: 'history', label: '历史', icon: BookOpen },
+  { id: 'settings', label: '设置', icon: Settings },
 ] as const;
 
 const today = () => new Date().toISOString();
@@ -147,7 +148,7 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
     setStoryState('loading');
     setError('');
     try {
-      const nextDraft = await generateStory({ theme: nextTheme, length, style, tone, babyName: settings.babyName });
+      const nextDraft = await generateStory({ theme: nextTheme, length, style, tone, babyName: settings.babyName }, voiceConfig);
       setTheme(nextTheme);
       setDraft(nextDraft);
       setActiveTab('generate');
@@ -222,19 +223,11 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
     <div className="h-dvh bg-[#f8f1ea] text-[#463b36]">
       <div className="mx-auto flex h-dvh w-full max-w-md flex-col overflow-hidden bg-[linear-gradient(180deg,#fffaf2_0%,#f5edf6_48%,#f8f1ea_100%)] shadow-2xl">
         <header className="shrink-0 px-5 pb-3 pt-[calc(18px+env(safe-area-inset-top,0px))]">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <div>
               <p className="text-xs font-bold text-[#a38189]">胎教故事助手</p>
               <h1 className="mt-1 text-2xl font-black tracking-normal text-[#403632]">{settings.babyName}的晚安故事</h1>
             </div>
-            <button
-              type="button"
-              onClick={() => setActiveTab('settings')}
-              className="grid h-11 w-11 place-items-center rounded-full bg-white/75 text-[#8f6f86] shadow-sm"
-              aria-label="设置"
-            >
-              <Settings size={20} />
-            </button>
           </div>
         </header>
 
@@ -322,7 +315,7 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
           )}
         </main>
 
-        <nav className="fixed bottom-0 left-1/2 z-40 grid w-full max-w-md -translate-x-1/2 grid-cols-4 gap-1 border-t border-white/70 bg-[#fff8f0]/90 px-3 pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl">
+        <nav className="fixed bottom-0 left-1/2 z-40 grid w-full max-w-md -translate-x-1/2 grid-cols-5 gap-1 border-t border-white/70 bg-[#fff8f0]/90 px-3 pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl">
           {navItems.map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -441,6 +434,13 @@ function GeneratePage(props: {
 }) {
   const isLoading = props.storyState === 'loading';
   const [saveNotice, setSaveNotice] = useState('');
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const element = bodyRef.current;
+    if (!element) return;
+    element.style.height = '0px';
+    element.style.height = `${Math.max(element.scrollHeight, 320)}px`;
+  }, [props.draft?.body]);
   const handleSaveClick = () => {
     const saved = props.onSave();
     if (!saved) return;
@@ -462,7 +462,7 @@ function GeneratePage(props: {
         <Card>
           <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-black">预览与编辑</h2><Pencil size={18} className="text-[#b18091]" /></div>
           <input value={props.draft.title} onChange={event => props.onDraftChange({ ...props.draft!, title: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-base font-black outline-none" />
-          <textarea value={props.draft.body} onChange={event => props.onDraftChange({ ...props.draft!, body: event.target.value })} rows={10} className="mt-3 w-full resize-none rounded-3xl border border-[#eadcda] bg-[#fffaf5] p-4 text-sm font-bold leading-7 outline-none" />
+          <textarea ref={bodyRef} value={props.draft.body} onChange={event => props.onDraftChange({ ...props.draft!, body: event.target.value })} rows={8} className="mt-3 min-h-[320px] w-full resize-none overflow-hidden rounded-[24px] border border-[#eadcda] bg-[#fffaf5]/85 p-4 text-[15px] font-bold leading-8 outline-none" />
           <div className="mt-4 grid grid-cols-3 gap-2">
             <button type="button" onClick={handleSaveClick} className="flex h-11 items-center justify-center gap-1 rounded-2xl bg-[#efe5e1] text-xs font-black text-[#735f5a]"><Save size={16} />保存</button>
             <button type="button" onClick={props.onGenerate} className="flex h-11 items-center justify-center gap-1 rounded-2xl bg-[#eee3ef] text-xs font-black text-[#76506f]"><RotateCcw size={16} />重写</button>
@@ -654,8 +654,34 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
         <p className="mt-3 rounded-2xl bg-[#fffaf5] p-3 text-xs font-bold leading-5 text-[#9b7b80]">填写预产期后，首页会自动推算孕周；没有预产期时使用手动设置的周数和天数。</p>
       </Card>
       <Card><h2 className="text-lg font-black">默认偏好</h2><SettingsField label="默认长度"><select value={local.defaultLength} onChange={event => update({ defaultLength: event.target.value as StoryLength })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">{Object.entries(lengthLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></SettingsField><SettingsField label="默认风格"><select value={local.defaultStyle} onChange={event => update({ defaultStyle: event.target.value as StoryStyle })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">{Object.entries(styleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></SettingsField></Card>
-      <Card><h2 className="text-lg font-black">百炼朗读</h2><p className="mt-2 text-sm leading-6 text-[#8c7470]">个人使用只需要配置 Worker 地址。爸爸/妈妈真实音色 ID 在 Cloudflare Worker 后台维护，前端只发送 papa 或 mama。</p><SettingsField label="Worker Base URL"><input value={voiceLocal.workerBaseUrl} onChange={event => updateVoice({ workerBaseUrl: event.target.value })} placeholder="https://your-worker.example.workers.dev" className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField><label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>启用百炼真实语音</span><input type="checkbox" checked={voiceLocal.realVoiceEnabled} onChange={event => updateVoice({ realVoiceEnabled: event.target.checked })} className="accent-[#76506f]" /></label><label className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>Worker 不可用时使用 mock</span><input type="checkbox" checked={voiceLocal.mockFallbackEnabled} onChange={event => updateVoice({ mockFallbackEnabled: event.target.checked })} className="accent-[#76506f]" /></label><p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">模型、音色 ID、朗读参数都由 Worker 和百炼后台控制，前端不再配置。</p></Card>
-      <Card><h2 className="text-lg font-black">缓存</h2><p className="mt-2 text-sm leading-6 text-[#8c7470]">故事、音色配置和 mock 音频保存在本机浏览器。清理后不可恢复。</p><button type="button" onClick={props.onClear} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#fff0f0] text-sm font-black text-[#a9525e]"><Trash2 size={17} />清理故事与音色缓存</button></Card>
+      <Card>
+        <h2 className="text-lg font-black">AI 故事生成</h2>
+        <p className="mt-2 text-sm leading-6 text-[#8c7470]">API Key 只放在 Cloudflare Worker 里。前端只保存 Worker 地址、提供商和模型名。</p>
+        <SettingsField label="Worker Base URL">
+          <input value={voiceLocal.workerBaseUrl} onChange={event => updateVoice({ workerBaseUrl: event.target.value })} placeholder="https://your-worker.example.workers.dev" className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" />
+        </SettingsField>
+        <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>启用大模型生成故事</span><input type="checkbox" checked={voiceLocal.realStoryEnabled} onChange={event => updateVoice({ realStoryEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
+        <SettingsField label="模型服务">
+          <select value={voiceLocal.storyProvider} onChange={event => updateVoice({ storyProvider: event.target.value === 'deepseek' ? 'deepseek' : 'dashscope' })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">
+            <option value="dashscope">阿里云百炼 / 通义千问</option>
+            <option value="deepseek">DeepSeek</option>
+          </select>
+        </SettingsField>
+        <SettingsField label="模型名">
+          <input value={voiceLocal.storyModel} onChange={event => updateVoice({ storyModel: event.target.value })} placeholder="qwen-plus-2025-07-28" className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" />
+        </SettingsField>
+        <SettingsField label={`创意温度：${voiceLocal.storyTemperature.toFixed(2)}`}>
+          <input type="range" min={0.2} max={1.2} step={0.05} value={voiceLocal.storyTemperature} onChange={event => updateVoice({ storyTemperature: Number(event.target.value) })} className="w-full accent-[#76506f]" />
+        </SettingsField>
+        <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>Worker 不可用时使用本地 mock</span><input type="checkbox" checked={voiceLocal.storyFallbackEnabled} onChange={event => updateVoice({ storyFallbackEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
+      </Card>
+      <Card>
+        <h2 className="text-lg font-black">百炼朗读</h2>
+        <p className="mt-2 text-sm leading-6 text-[#8c7470]">爸爸/妈妈真实音色 ID 在 Cloudflare Worker 后台维护，前端只发送 papa 或 mama。</p>
+        <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>启用百炼真实语音</span><input type="checkbox" checked={voiceLocal.realVoiceEnabled} onChange={event => updateVoice({ realVoiceEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
+        <label className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>Worker 不可用时使用 mock</span><input type="checkbox" checked={voiceLocal.mockFallbackEnabled} onChange={event => updateVoice({ mockFallbackEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
+        <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">模型、音色 ID、朗读参数都由 Worker 和百炼后台控制，前端不再配置。</p>
+      </Card>      <Card><h2 className="text-lg font-black">缓存</h2><p className="mt-2 text-sm leading-6 text-[#8c7470]">故事、音色配置和 mock 音频保存在本机浏览器。清理后不可恢复。</p><button type="button" onClick={props.onClear} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#fff0f0] text-sm font-black text-[#a9525e]"><Trash2 size={17} />清理故事与音色缓存</button></Card>
       {props.onBackToToolbox && <Card><button type="button" onClick={props.onBackToToolbox} className="flex w-full items-center justify-between gap-4 text-left"><span className="flex min-w-0 items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#f1e3f0] text-[#76506f]"><PackageOpen size={19} /></span><span className="min-w-0"><strong className="block text-sm font-black text-[#403632]">返回三秋工具箱</strong><span className="mt-1 block text-xs font-bold text-[#9b7b80]">切换到其他个人工具</span></span></span><ChevronRight size={18} className="shrink-0 text-[#b79b9a]" /></button></Card>}
     </div>
   );
