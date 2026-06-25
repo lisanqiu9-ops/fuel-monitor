@@ -1,4 +1,4 @@
-﻿import { ArrowLeft, ChevronDown, ChevronRight, Database, FileUp, Info, RefreshCw, ShieldCheck, TableProperties, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Database, FileUp, Info, RefreshCw, ShieldCheck, TableProperties, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { LedgerCache } from './ledgerTypes';
 
@@ -29,7 +29,7 @@ export function LedgerSettingsPage({ cache, isImporting, error, onImport, onClea
   const rowClass = 'flex min-h-14 w-full items-center gap-3 px-4 text-left transition active:bg-[#f6f0ec]';
   const iconClass = 'grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-[#f2ebe7] text-[#76506f]';
 
-  return <div className="mx-auto max-w-2xl space-y-4">
+  return <div className="space-y-4">
     <input ref={inputRef} type="file" accept=".csv,text/csv,text/plain,.txt" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) onImport(file); event.target.value = ''; }} />
 
     <section><h2 className="mb-2 px-1 text-xs font-black text-[#9a817e]">账本</h2><div className="overflow-hidden rounded-2xl border border-white/80 bg-white/76 shadow-[0_10px_24px_rgba(91,72,72,0.07)]">

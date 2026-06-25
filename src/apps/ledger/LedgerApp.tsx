@@ -1,4 +1,4 @@
-﻿import { BookOpenCheck } from 'lucide-react';
+import { BookOpenCheck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { LedgerAnalysisPage } from './LedgerAnalysisPage';
 import { LedgerBottomNav, type LedgerTab } from './LedgerBottomNav';
@@ -65,7 +65,7 @@ export default function LedgerApp({ onBackToToolbox }: Props) {
 
   if (!ready) return <div className="h-dvh bg-[#fffaf2]" />;
 
-  const emptyPage = <section className="mx-auto max-w-lg rounded-2xl border border-dashed border-[#d9c9d6] bg-white/55 px-5 py-8 text-center"><BookOpenCheck size={26} className="mx-auto text-[#a7829d]" /><h2 className="mt-3 text-base font-black">还没有本地账本</h2><p className="mx-auto mt-2 text-xs font-bold leading-5 text-[#8b7471]">前往设置选择 ledger.csv，导入后即可查看消费概览和数据质量。</p><button type="button" onClick={() => setActiveTab('settings')} className="mt-4 h-9 rounded-xl bg-[#6f536b] px-4 text-xs font-black text-white">前往设置</button></section>;
+  const emptyPage = <section className="rounded-2xl border border-dashed border-[#d9c9d6] bg-white/55 px-5 py-8 text-center"><BookOpenCheck size={26} className="mx-auto text-[#a7829d]" /><h2 className="mt-3 text-base font-black">还没有本地账本</h2><p className="mx-auto mt-2 max-w-xs text-xs font-bold leading-5 text-[#8b7471]">前往设置选择 ledger.csv，导入后即可查看消费概览和数据质量。</p><button type="button" onClick={() => setActiveTab('settings')} className="mt-4 h-9 rounded-xl bg-[#6f536b] px-4 text-xs font-black text-white">前往设置</button></section>;
 
   let page = emptyPage;
   if (activeTab === 'settings') page = <LedgerSettingsPage cache={cache} isImporting={isImporting} error={error} onImport={handleImport} onClear={clearCache} onBackToToolbox={onBackToToolbox} />;
@@ -76,5 +76,5 @@ export default function LedgerApp({ onBackToToolbox }: Props) {
     if (activeTab === 'quality') page = <LedgerQualityPage items={quality} />;
   }
 
-  return <><LedgerLayout activeTab={activeTab} onTabChange={setActiveTab}>{page}</LedgerLayout><LedgerBottomNav activeTab={activeTab} onChange={setActiveTab} /></>;
+  return <><LedgerLayout>{page}</LedgerLayout><LedgerBottomNav activeTab={activeTab} onChange={setActiveTab} /></>;
 }
