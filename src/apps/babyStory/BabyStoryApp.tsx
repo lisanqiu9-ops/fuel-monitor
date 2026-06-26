@@ -88,6 +88,11 @@ const parseDateInput = (value: string) => {
   const date = new Date(year, month - 1, day);
   return Number.isNaN(date.getTime()) ? null : date;
 };
+const formatDateInput = (value: string) => {
+  const date = parseDateInput(value);
+  if (!date) return '请选择预产期';
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+};
 const calculatePregnancyAge = (dueDate: string, now = new Date()) => {
   const due = parseDateInput(dueDate);
   if (!due) return null;
@@ -664,7 +669,19 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
       <Card>
         <h2 className="text-lg font-black">宝宝信息</h2>
         <SettingsField label="宝宝昵称"><input value={local.babyName} onChange={event => update({ babyName: event.target.value })} className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold tabular-nums outline-none" /></SettingsField>
-        <SettingsField label="预产期"><input type="date" value={local.dueDate} onChange={event => updateDueDate(event.target.value)} className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField>
+                <SettingsField label="预产期">
+          <span className="relative flex h-14 w-full min-w-0 items-center overflow-hidden rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 text-sm font-bold tabular-nums text-[#403632] shadow-[0_1px_0_rgba(255,255,255,0.75)_inset]">
+            <span className="min-w-0 flex-1 truncate">{formatDateInput(local.dueDate)}</span>
+            <CalendarDays size={18} className="ml-3 shrink-0 text-[#9b7b80]" />
+            <input
+              type="date"
+              value={local.dueDate}
+              onChange={event => updateDueDate(event.target.value)}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              aria-label="预产期"
+            />
+          </span>
+        </SettingsField>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <SettingsField label="孕周">
             <select

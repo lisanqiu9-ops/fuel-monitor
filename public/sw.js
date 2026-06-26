@@ -1,4 +1,4 @@
-const CACHE_NAME = 'personal-toolbox-v3';
+const CACHE_NAME = 'personal-toolbox-v4';
 const APP_ASSETS = ['./', 'manifest.webmanifest', 'pwa-icon.svg'];
 
 self.addEventListener('install', event => {
