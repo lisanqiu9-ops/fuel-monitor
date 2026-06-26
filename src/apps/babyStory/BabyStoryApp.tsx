@@ -82,6 +82,23 @@ const formatDate = (value: string) =>
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 const formatPregnancyAge = (week: number, day: number) => day > 0 ? `孕 ${week} 周 + ${day} 天` : `孕 ${week} 周`;
 const localDayTime = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+const parseDateInput = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+const calculatePregnancyAge = (dueDate: string, now = new Date()) => {
+  const due = parseDateInput(dueDate);
+  if (!due) return null;
+  const daysUntilDue = Math.ceil((localDayTime(due) - localDayTime(now)) / 86400000);
+  const gestationalDays = clamp(280 - daysUntilDue, 0, 294);
+  return {
+    week: Math.floor(gestationalDays / 7),
+    day: gestationalDays % 7,
+    daysUntilDue,
+  };
+};
 const playbackRateOptions = [0.8, 0.9, 1, 1.15] as const;
 const formatPlaybackRate = (rate: number) => `${rate.toFixed(2).replace(/\.?0+$/, '')}x`;
 const isAudioExpired = (audio?: AudioRecord) => Boolean(audio?.expiresAt && Date.now() / 1000 > audio.expiresAt);
@@ -123,18 +140,12 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
   const recommendedTheme = recommendThemes[new Date().getDate() % recommendThemes.length];
 
   const pregnancyText = useMemo(() => {
-    if (settings.dueDate) {
-      const due = new Date(settings.dueDate);
-      if (!Number.isNaN(due.getTime())) {
-        const daysUntilDue = Math.ceil((localDayTime(due) - localDayTime(new Date())) / 86400000);
-        if (daysUntilDue >= 0) {
-          const gestationalDays = clamp(280 - daysUntilDue, 0, 294);
-          const week = Math.floor(gestationalDays / 7);
-          const day = gestationalDays % 7;
-          return `${formatPregnancyAge(week, day)} · 距预产期约 ${daysUntilDue} 天`;
-        }
-        return '宝宝可能已经见到世界啦';
+    const age = calculatePregnancyAge(settings.dueDate);
+    if (age) {
+      if (age.daysUntilDue >= 0) {
+        return `${formatPregnancyAge(age.week, age.day)} · 距预产期约 ${age.daysUntilDue} 天`;
       }
+      return '宝宝可能已经见到世界啦';
     }
     return formatPregnancyAge(settings.pregnancyWeek, settings.pregnancyDay ?? 0);
   }, [settings.dueDate, settings.pregnancyDay, settings.pregnancyWeek]);
@@ -219,8 +230,8 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
   };
 
   return (
-    <div className="h-dvh bg-[#f8f1ea] text-[#463b36]">
-      <div className="mx-auto flex h-dvh w-full max-w-md flex-col overflow-hidden bg-[linear-gradient(180deg,#fffaf2_0%,#f5edf6_48%,#f8f1ea_100%)] shadow-2xl">
+    <div className="h-[100svh] overflow-hidden bg-[#f8f1ea] text-[#463b36]">
+      <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden bg-[linear-gradient(180deg,#fffaf2_0%,#f5edf6_48%,#f8f1ea_100%)] shadow-2xl">
         <header className="shrink-0 px-5 pb-3 pt-[calc(18px+env(safe-area-inset-top,0px))]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -637,6 +648,11 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
   useEffect(() => setLocal(props.settings), [props.settings]);
   useEffect(() => setVoiceLocal(props.voiceConfig), [props.voiceConfig]);
   const update = (patch: Partial<BabySettings>) => { const next = { ...local, ...patch }; setLocal(next); props.onSettingsChange(next); };
+  const updateDueDate = (dueDate: string) => {
+    const age = calculatePregnancyAge(dueDate);
+    update(age && age.daysUntilDue >= 0 ? { dueDate, pregnancyWeek: clamp(age.week, 1, 42), pregnancyDay: age.day } : { dueDate });
+  };
+  const updateManualPregnancy = (patch: Pick<Partial<BabySettings>, 'pregnancyWeek' | 'pregnancyDay'>) => update({ dueDate: '', ...patch });
   const updateVoice = (patch: Partial<VoiceRuntimeConfig>) => { const next = { ...voiceLocal, ...patch }; setVoiceLocal(next); props.onVoiceConfigChange(next); };
   const copyWorkerCode = async () => {
     await navigator.clipboard.writeText(workerCode);
@@ -647,8 +663,8 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
     <div className="space-y-4">
       <Card>
         <h2 className="text-lg font-black">宝宝信息</h2>
-        <SettingsField label="宝宝昵称"><input value={local.babyName} onChange={event => update({ babyName: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField>
-        <SettingsField label="预产期"><input type="date" value={local.dueDate} onChange={event => update({ dueDate: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField>
+        <SettingsField label="宝宝昵称"><input value={local.babyName} onChange={event => update({ babyName: event.target.value })} className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold tabular-nums outline-none" /></SettingsField>
+        <SettingsField label="预产期"><input type="date" value={local.dueDate} onChange={event => updateDueDate(event.target.value)} className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <SettingsField label="孕周">
             <input
@@ -656,8 +672,8 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
               min={1}
               max={42}
               value={local.pregnancyWeek}
-              onChange={event => update({ pregnancyWeek: clamp(Number(event.target.value), 1, 42) })}
-              className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none"
+              onChange={event => updateManualPregnancy({ pregnancyWeek: clamp(Number(event.target.value), 1, 42) })}
+              className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold tabular-nums outline-none"
             />
           </SettingsField>
           <SettingsField label="天数">
@@ -666,19 +682,19 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
               min={0}
               max={6}
               value={local.pregnancyDay ?? 0}
-              onChange={event => update({ pregnancyDay: clamp(Number(event.target.value), 0, 6) })}
-              className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none"
+              onChange={event => updateManualPregnancy({ pregnancyDay: clamp(Number(event.target.value), 0, 6) })}
+              className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold tabular-nums outline-none"
             />
           </SettingsField>
         </div>
         <p className="mt-3 rounded-2xl bg-[#fffaf5] p-3 text-xs font-bold leading-5 text-[#9b7b80]">填写预产期后，首页会自动推算孕周；没有预产期时使用手动设置的周数和天数。</p>
       </Card>
-      <Card><h2 className="text-lg font-black">默认偏好</h2><SettingsField label="默认长度"><select value={local.defaultLength} onChange={event => update({ defaultLength: event.target.value as StoryLength })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">{Object.entries(lengthLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></SettingsField><SettingsField label="默认风格"><select value={local.defaultStyle} onChange={event => update({ defaultStyle: event.target.value as StoryStyle })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">{Object.entries(styleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></SettingsField></Card>
+      <Card><h2 className="text-lg font-black">默认偏好</h2><SettingsField label="默认长度"><select value={local.defaultLength} onChange={event => update({ defaultLength: event.target.value as StoryLength })} className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold tabular-nums outline-none">{Object.entries(lengthLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></SettingsField><SettingsField label="默认风格"><select value={local.defaultStyle} onChange={event => update({ defaultStyle: event.target.value as StoryStyle })} className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold tabular-nums outline-none">{Object.entries(styleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></SettingsField></Card>
       <Card>
         <h2 className="text-lg font-black">服务配置 · AI 故事生成</h2>
         <p className="mt-2 text-sm leading-6 text-[#8c7470]">模型和 API Key 都在 Cloudflare Worker 里配置。前端只保存 Worker 地址和开关状态。</p>
         <SettingsField label="Worker Base URL">
-          <input value={voiceLocal.workerBaseUrl} onChange={event => updateVoice({ workerBaseUrl: event.target.value })} placeholder="https://your-worker.example.workers.dev" className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" />
+          <input value={voiceLocal.workerBaseUrl} onChange={event => updateVoice({ workerBaseUrl: event.target.value })} placeholder="https://your-worker.example.workers.dev" className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold tabular-nums outline-none" />
         </SettingsField>
         <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>启用大模型生成故事</span><input type="checkbox" checked={voiceLocal.realStoryEnabled} onChange={event => updateVoice({ realStoryEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
         <label className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>失败时使用本地兜底</span><input type="checkbox" checked={voiceLocal.storyFallbackEnabled} onChange={event => updateVoice({ storyFallbackEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
@@ -697,7 +713,7 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
       <Card>
         <h2 className="text-lg font-black">服务配置 · 百炼朗读</h2>
         <p className="mt-2 text-sm leading-6 text-[#8c7470]">爸爸/妈妈真实音色 ID 在 Cloudflare Worker 后台维护，前端只发送 papa 或 mama。</p>
-        <SettingsField label="默认朗读声音"><select value={local.defaultVoiceId} onChange={event => update({ defaultVoiceId: event.target.value })} className="w-full rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none">{props.voices.map(voice => <option key={voice.id} value={voice.id}>{voice.name}</option>)}</select></SettingsField>
+        <SettingsField label="默认朗读声音"><select value={local.defaultVoiceId} onChange={event => update({ defaultVoiceId: event.target.value })} className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold tabular-nums outline-none">{props.voices.map(voice => <option key={voice.id} value={voice.id}>{voice.name}</option>)}</select></SettingsField>
         <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>启用百炼真实语音</span><input type="checkbox" checked={voiceLocal.realVoiceEnabled} onChange={event => updateVoice({ realVoiceEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
         <label className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#fffaf5] p-3 text-sm font-bold text-[#735f5a]"><span>Worker 不可用时使用本地兜底</span><input type="checkbox" checked={voiceLocal.mockFallbackEnabled} onChange={event => updateVoice({ mockFallbackEnabled: event.target.checked })} className="accent-[#76506f]" /></label>
         <p className="mt-3 rounded-2xl bg-[#f8f0f5] p-3 text-xs font-bold leading-5 text-[#8c6380]">模型、音色 ID、朗读参数都由 Worker 和百炼后台控制，前端不再配置。</p>
