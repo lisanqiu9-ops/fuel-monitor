@@ -252,7 +252,7 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
           </div>
         </header>
 
-        <main className="soft-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(88px+env(safe-area-inset-bottom,0px))]">
+        <main className="soft-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-4">
           {activeTab === 'home' && (
             <HomePage
               pregnancyText={pregnancyText}
@@ -344,7 +344,7 @@ export default function BabyStoryApp({ onBackToToolbox }: BabyStoryAppProps) {
           )}
         </main>
 
-        <nav className="fixed bottom-0 left-1/2 z-40 grid w-full max-w-md -translate-x-1/2 grid-cols-4 gap-1 border-t border-white/70 bg-[#fff8f0]/90 px-3 pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl">
+        <nav className="shrink-0 grid w-full grid-cols-4 gap-1 border-t border-white/70 bg-[#fff8f0]/90 px-3 pb-[calc(8px+env(safe-area-inset-bottom,0px))] pt-2 backdrop-blur-xl">
           {navItems.map(item => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -667,24 +667,22 @@ function SettingsPage(props: { settings: BabySettings; voiceConfig: VoiceRuntime
         <SettingsField label="预产期"><input type="date" value={local.dueDate} onChange={event => updateDueDate(event.target.value)} className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold outline-none" /></SettingsField>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <SettingsField label="孕周">
-            <input
-              type="number"
-              min={1}
-              max={42}
+            <select
               value={local.pregnancyWeek}
-              onChange={event => updateManualPregnancy({ pregnancyWeek: clamp(Number(event.target.value), 1, 42) })}
+              onChange={event => updateManualPregnancy({ pregnancyWeek: Number(event.target.value) })}
               className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold tabular-nums outline-none"
-            />
+            >
+              {Array.from({ length: 42 }, (_, index) => index + 1).map(week => <option key={week} value={week}>{week}</option>)}
+            </select>
           </SettingsField>
           <SettingsField label="天数">
-            <input
-              type="number"
-              min={0}
-              max={6}
+            <select
               value={local.pregnancyDay ?? 0}
-              onChange={event => updateManualPregnancy({ pregnancyDay: clamp(Number(event.target.value), 0, 6) })}
+              onChange={event => updateManualPregnancy({ pregnancyDay: Number(event.target.value) })}
               className="w-full min-w-0 rounded-2xl border border-[#eadcda] bg-[#fffaf5] px-4 py-3 text-sm font-bold tabular-nums outline-none"
-            />
+            >
+              {Array.from({ length: 7 }, (_, day) => day).map(day => <option key={day} value={day}>{day}</option>)}
+            </select>
           </SettingsField>
         </div>
         <p className="mt-3 rounded-2xl bg-[#fffaf5] p-3 text-xs font-bold leading-5 text-[#9b7b80]">填写预产期后，首页会自动推算孕周；没有预产期时使用手动设置的周数和天数。</p>
