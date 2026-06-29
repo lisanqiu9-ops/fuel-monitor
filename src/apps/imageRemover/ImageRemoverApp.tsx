@@ -9,12 +9,12 @@ import {
   Loader2,
   Lock,
   RotateCcw,
-  Scissors,
   Sparkles,
   Upload,
   Wifi,
   X,
 } from 'lucide-react';
+import { cn } from '@/src/lib/utils';
 
 type EngineMode = 'local' | 'cloud';
 type ProcessState = 'idle' | 'processing' | 'done' | 'error';
@@ -46,6 +46,7 @@ const checkerboard = {
   backgroundSize: '18px 18px',
 };
 
+const pressClass = 'transition-transform duration-150 ease-out active:scale-[0.96]';
 const formatSize = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
 
 export default function ImageRemoverApp({ onBackToToolbox }: ImageRemoverAppProps) {
@@ -205,158 +206,188 @@ export default function ImageRemoverApp({ onBackToToolbox }: ImageRemoverAppProp
     image.src = resultUrl;
   }, [activeImage, bgColor, resultUrl]);
 
-  const stageText = state === 'processing' ? `正在处理 ${progress}%` : state === 'done' ? '处理完成' : state === 'error' ? '处理失败' : '等待上传图片';
+  const stageText = state === 'processing' ? '正在处理' : state === 'done' ? '处理完成' : state === 'error' ? '处理失败' : '等待上传图片';
 
   return (
     <main className="h-dvh overflow-hidden bg-[linear-gradient(180deg,#fffaf2_0%,#f1edf6_55%,#f8f1ea_100%)] text-[#403632] antialiased">
       <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden">
-        <header className="shrink-0 px-5 pb-3 pt-[calc(16px+env(safe-area-inset-top,0px))]">
-          <div className="flex items-center justify-between gap-3">
-            <button type="button" onClick={onBackToToolbox} className="grid h-10 w-10 place-items-center rounded-full bg-white/76 text-[#7b6662] shadow-[0_8px_20px_rgba(91,72,72,0.08),0_0_0_1px_rgba(255,255,255,0.78)]" aria-label="返回三秋工具箱">
+        <header className="shrink-0 px-4 pb-2 pt-[calc(12px+env(safe-area-inset-top,0px))]">
+          <div className="grid grid-cols-[44px_1fr_44px] items-center gap-3">
+            <button
+              type="button"
+              onClick={onBackToToolbox}
+              className={cn('grid h-11 w-11 place-items-center rounded-full bg-white/78 text-[#7b6662] shadow-[0_10px_24px_rgba(91,72,72,0.10),0_0_0_1px_rgba(255,255,255,0.78)]', pressClass)}
+              aria-label="返回三秋工具箱"
+            >
               <ArrowLeft size={18} />
             </button>
-            <div className="min-w-0 flex-1 text-center">
-              <p className="text-xs font-black text-[#a38189]">图片工具</p>
-              <h1 className="truncate text-lg font-black">AI 抠图去背景</h1>
+            <div className="min-w-0 text-center">
+              <p className="text-[11px] font-black leading-4 text-[#a38189]">图片工具</p>
+              <h1 className="truncate text-lg font-black leading-6 text-balance">AI 抠图去背景</h1>
             </div>
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-[#ead7ea] text-[#76506f]">
-              <Scissors size={19} />
-            </div>
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className={cn('grid h-11 w-11 place-items-center rounded-full bg-[#ead7ea] text-[#76506f] shadow-[0_10px_24px_rgba(118,80,111,0.16)]', pressClass)}
+              aria-label="添加图片"
+            >
+              <Upload size={19} />
+            </button>
           </div>
         </header>
 
-        <section className="soft-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(20px+env(safe-area-inset-bottom,0px))]">
-          <section className="rounded-[26px] bg-white/78 p-4 shadow-[0_16px_38px_rgba(91,72,72,0.10),0_0_0_1px_rgba(255,255,255,0.82)]">
-            <div className="flex items-center justify-between gap-3">
-              <div>
+        <section className="shrink-0 px-4 pb-3">
+          <div className="rounded-[28px] bg-white/82 p-3 shadow-[0_18px_42px_rgba(91,72,72,0.12),0_0_0_1px_rgba(255,255,255,0.84)] backdrop-blur">
+            <div className="mb-3 flex items-start justify-between gap-3 px-1">
+              <div className="min-w-0">
                 <p className="text-xs font-black text-[#a38189]">{stageText}</p>
-                <p className="mt-1 text-sm font-bold text-[#7d6965]">{activeImage ? `${activeImage.name} · ${formatSize(activeImage.size)}` : '支持 JPG、PNG、WebP，单张不超过 20MB'}</p>
+                <p className="mt-1 truncate text-sm font-bold text-[#7d6965]">
+                  {activeImage ? `${activeImage.name} · ${formatSize(activeImage.size)}` : '支持 JPG、PNG、WebP，单张不超过 20MB'}
+                </p>
               </div>
-              <button type="button" onClick={() => inputRef.current?.click()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#f5ede8] text-[#76506f]" aria-label="添加图片">
-                <Upload size={19} />
-              </button>
+              {state === 'processing' && <span className="shrink-0 text-sm font-black tabular-nums text-[#76506f]">{progress}%</span>}
             </div>
 
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => !activeImage && inputRef.current?.click()}
-              onKeyDown={event => {
-                if (!activeImage && (event.key === 'Enter' || event.key === ' ')) inputRef.current?.click();
-              }}
-              onDragOver={event => {
-                event.preventDefault();
-                setIsDragOver(true);
-              }}
-              onDragLeave={() => setIsDragOver(false)}
-              onDrop={event => {
-                event.preventDefault();
-                setIsDragOver(false);
-                addFiles(event.dataTransfer.files);
-              }}
-              className={`mt-4 overflow-hidden rounded-[22px] border border-white/80 bg-[#f7efe9] ${isDragOver ? 'ring-2 ring-[#76506f]' : ''}`}
-            >
-              {activeImage ? (
-                <ImagePreview originalUrl={activeImage.url} resultUrl={resultUrl} bgColor={bgColor} />
-              ) : (
-                <div className="grid min-h-[280px] place-items-center px-6 text-center">
-                  <div>
-                    <div className="mx-auto grid h-16 w-16 place-items-center rounded-[22px] bg-white/82 text-[#76506f]">
-                      <Upload size={28} />
-                    </div>
-                    <p className="mt-4 text-base font-black">拖拽图片到这里</p>
-                    <p className="mt-2 text-sm font-bold leading-6 text-[#8b7471]">或点击选择文件开始去背景。</p>
-                  </div>
-                </div>
-              )}
+            <div className="grid grid-cols-2 gap-2">
+              <ModeButton active={mode === 'local'} icon={<Lock size={17} />} label="本地" onClick={() => setMode('local')} />
+              <ModeButton active={mode === 'cloud'} icon={<Wifi size={17} />} label="云端" onClick={() => setMode('cloud')} />
+            </div>
+
+            <div className="mt-2 grid grid-cols-[minmax(0,1fr)_44px_44px] gap-2">
+              <button
+                type="button"
+                disabled={!activeImage || state === 'processing'}
+                onClick={processActive}
+                className={cn(
+                  'flex h-11 min-w-0 items-center justify-center gap-2 rounded-[17px] bg-[#6f536b] pl-4 pr-3.5 text-sm font-black text-white shadow-[0_12px_24px_rgba(111,83,107,0.20)] disabled:bg-[#c7b7c1] disabled:text-white/70',
+                  pressClass,
+                )}
+              >
+                {state === 'processing' ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+                <span className="truncate">{state === 'processing' ? '处理中' : '开始抠图'}</span>
+              </button>
+              <IconActionButton label="下载 PNG" disabled={!resultUrl} onClick={() => download('png')} icon={<FileImage size={17} />} tone="green" />
+              <IconActionButton label="下载 JPG" disabled={!resultUrl} onClick={() => download('jpg')} icon={<ImageDown size={17} />} tone="blue" />
             </div>
 
             {state === 'processing' && (
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#e6ddd8]">
-                <div className="h-full rounded-full bg-[#76506f] transition-all" style={{ width: `${progress}%` }} />
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#e6ddd8]">
+                <div className="h-full rounded-full bg-[#76506f] transition-[width] duration-150 ease-out" style={{ width: `${progress}%` }} />
               </div>
             )}
-          </section>
+          </div>
+        </section>
 
-          <section className="mt-3 grid grid-cols-2 gap-3">
-            <ModeButton active={mode === 'local'} icon={<Lock size={17} />} label="本地" onClick={() => setMode('local')} />
-            <ModeButton active={mode === 'cloud'} icon={<Wifi size={17} />} label="云端" onClick={() => setMode('cloud')} />
-          </section>
-
-          <section className="mt-3 rounded-[22px] bg-white/70 p-4 shadow-[0_12px_28px_rgba(91,72,72,0.08),0_0_0_1px_rgba(255,255,255,0.78)]">
-            <p className="text-xs font-black text-[#a38189]">背景色</p>
-            <div className="mt-3 grid grid-cols-6 gap-2">
-              {BG_COLORS.map(color => (
-                <button
-                  key={color.value}
-                  type="button"
-                  title={color.label}
-                  aria-label={color.label}
-                  onClick={() => setBgColor(color.value)}
-                  className={`h-9 rounded-[14px] border-2 ${bgColor === color.value ? 'border-[#76506f]' : 'border-white/80'}`}
-                  style={color.value === 'transparent' ? checkerboard : { backgroundColor: color.value }}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-3 grid grid-cols-2 gap-3">
-            <button type="button" disabled={!activeImage || state === 'processing'} onClick={processActive} className="col-span-2 flex h-12 items-center justify-center gap-2 rounded-[18px] bg-[#6f536b] text-sm font-black text-white disabled:opacity-45">
-              {state === 'processing' ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
-              {state === 'processing' ? `处理中 ${progress}%` : '开始抠图'}
-            </button>
-            <button type="button" disabled={!resultUrl} onClick={() => download('png')} className="flex h-11 items-center justify-center gap-2 rounded-[16px] bg-white/74 text-xs font-black text-[#5f775b] disabled:opacity-45">
-              <FileImage size={16} />
-              下载 PNG
-            </button>
-            <button type="button" disabled={!resultUrl} onClick={() => download('jpg')} className="flex h-11 items-center justify-center gap-2 rounded-[16px] bg-white/74 text-xs font-black text-[#4f6b7a] disabled:opacity-45">
-              <ImageDown size={16} />
-              下载 JPG
-            </button>
-          </section>
-
-          {message && (
-            <section className={`mt-3 flex gap-2 rounded-[18px] p-3 text-xs font-bold leading-5 ${state === 'error' ? 'bg-red-50 text-red-700' : 'bg-white/70 text-[#7d6965]'}`}>
-              {state === 'error' ? <AlertCircle className="mt-0.5 shrink-0" size={16} /> : <Check className="mt-0.5 shrink-0" size={16} />}
-              <p>{message}</p>
-            </section>
-          )}
-
-          {images.length > 0 && (
-            <section className="mt-3 rounded-[22px] bg-white/70 p-3 shadow-[0_12px_28px_rgba(91,72,72,0.08),0_0_0_1px_rgba(255,255,255,0.78)]">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-black text-[#a38189]">图片队列</p>
-                <button type="button" onClick={resetAll} className="inline-flex items-center gap-1 text-xs font-black text-[#b45f5f]">
-                  <RotateCcw size={13} />
-                  清空
-                </button>
+        <section className="min-h-0 flex-1 px-4 pb-3">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => !activeImage && inputRef.current?.click()}
+            onKeyDown={event => {
+              if (!activeImage && (event.key === 'Enter' || event.key === ' ')) inputRef.current?.click();
+            }}
+            onDragOver={event => {
+              event.preventDefault();
+              setIsDragOver(true);
+            }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={event => {
+              event.preventDefault();
+              setIsDragOver(false);
+              addFiles(event.dataTransfer.files);
+            }}
+            className={cn(
+              'grid h-full min-h-[260px] overflow-hidden rounded-[30px] bg-white/74 p-3 shadow-[0_18px_42px_rgba(91,72,72,0.11),0_0_0_1px_rgba(255,255,255,0.84)] backdrop-blur transition-[box-shadow,scale] duration-150 ease-out',
+              isDragOver && 'scale-[1.01] shadow-[0_20px_48px_rgba(118,80,111,0.18),0_0_0_2px_rgba(118,80,111,0.30)]',
+            )}
+          >
+            {activeImage ? (
+              <ImagePreview originalUrl={activeImage.url} resultUrl={resultUrl} bgColor={bgColor} />
+            ) : (
+              <div className="grid h-full place-items-center rounded-[22px] bg-[#f4ece7] px-6 text-center">
+                <div>
+                  <div className="mx-auto grid h-16 w-16 place-items-center rounded-[22px] bg-white/86 text-[#76506f] shadow-[0_12px_28px_rgba(91,72,72,0.10)]">
+                    <Upload size={28} />
+                  </div>
+                  <p className="mt-4 text-base font-black text-balance">拖拽图片到这里</p>
+                  <p className="mt-2 text-sm font-bold leading-6 text-[#8b7471] text-pretty">或点击选择文件开始去背景。</p>
+                </div>
               </div>
-              <div className="no-scrollbar flex gap-2 overflow-x-auto">
-                {images.map(image => (
-                  <button key={image.id} type="button" onClick={() => setActiveId(image.id)} className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-[16px] border-2 ${activeImage?.id === image.id ? 'border-[#76506f]' : 'border-white/80'}`}>
-                    <img src={image.url} alt={image.name} className="h-full w-full object-cover" />
-                    {results[image.id] && <span className="absolute bottom-1 left-1 rounded-full bg-[#5f775b] px-1.5 py-0.5 text-[10px] font-black text-white">完成</span>}
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      aria-label="删除图片"
-                      onClick={event => {
-                        event.stopPropagation();
-                        removeImage(image.id);
-                      }}
-                      onKeyDown={event => {
-                        if (event.key === 'Enter' || event.key === ' ') removeImage(image.id);
-                      }}
-                      className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/55 text-white"
-                    >
-                      <X size={12} />
-                    </span>
-                  </button>
+            )}
+          </div>
+        </section>
+
+        <footer className="shrink-0 px-4 pb-[calc(12px+env(safe-area-inset-bottom,0px))]">
+          <div className="rounded-[26px] bg-white/78 p-3 shadow-[0_14px_34px_rgba(91,72,72,0.10),0_0_0_1px_rgba(255,255,255,0.82)] backdrop-blur">
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 text-xs font-black text-[#a38189]">背景</span>
+              <div className="grid flex-1 grid-cols-6 gap-1.5">
+                {BG_COLORS.map(color => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    title={color.label}
+                    aria-label={color.label}
+                    onClick={() => setBgColor(color.value)}
+                    className={cn('h-9 rounded-[13px] shadow-[0_0_0_1px_rgba(0,0,0,0.05)]', bgColor === color.value && 'shadow-[0_0_0_2px_rgba(118,80,111,0.82)]', pressClass)}
+                    style={color.value === 'transparent' ? checkerboard : { backgroundColor: color.value }}
+                  />
                 ))}
               </div>
-            </section>
-          )}
-        </section>
+            </div>
+
+            {(message || images.length > 0) && (
+              <div className="mt-3 border-t border-[#eadfda] pt-3">
+                {message && (
+                  <div className={`mb-3 flex gap-2 rounded-[18px] px-3 py-2 text-xs font-bold leading-5 text-pretty ${state === 'error' ? 'bg-red-50 text-red-700' : 'bg-[#f7efe9] text-[#7d6965]'}`}>
+                    {state === 'error' ? <AlertCircle className="mt-0.5 shrink-0" size={16} /> : <Check className="mt-0.5 shrink-0" size={16} />}
+                    <p>{message}</p>
+                  </div>
+                )}
+
+                {images.length > 0 && (
+                  <>
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-black text-[#a38189]">图片队列</p>
+                      <button type="button" onClick={resetAll} className={cn('inline-flex min-h-10 items-center gap-1 rounded-full px-2 text-xs font-black text-[#b45f5f]', pressClass)}>
+                        <RotateCcw size={13} />
+                        清空
+                      </button>
+                    </div>
+                    <div className="no-scrollbar flex gap-2 overflow-x-auto">
+                      {images.map(image => (
+                        <button
+                          key={image.id}
+                          type="button"
+                          onClick={() => setActiveId(image.id)}
+                          className={cn('relative h-16 w-16 shrink-0 overflow-hidden rounded-[15px] outline outline-1 -outline-offset-1 outline-black/10 transition-[scale,box-shadow] duration-150 ease-out active:scale-[0.96]', activeImage?.id === image.id && 'shadow-[0_0_0_2px_rgba(118,80,111,0.82)]')}
+                        >
+                          <img src={image.url} alt={image.name} className="h-full w-full object-cover outline outline-1 -outline-offset-1 outline-black/10" />
+                          {results[image.id] && <span className="absolute bottom-1 left-1 rounded-full bg-[#5f775b] px-1.5 py-0.5 text-[10px] font-black text-white">完成</span>}
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            aria-label="删除图片"
+                            onClick={event => {
+                              event.stopPropagation();
+                              removeImage(image.id);
+                            }}
+                            onKeyDown={event => {
+                              if (event.key === 'Enter' || event.key === ' ') removeImage(image.id);
+                            }}
+                            className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/58 text-white"
+                          >
+                            <X size={12} />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </footer>
       </div>
 
       <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={event => addFiles(event.target.files)} />
@@ -366,19 +397,44 @@ export default function ImageRemoverApp({ onBackToToolbox }: ImageRemoverAppProp
 
 function ModeButton({ active, icon, label, onClick }: { active: boolean; icon: ReactNode; label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`flex h-11 items-center justify-center gap-2 rounded-[17px] text-sm font-black shadow-[0_10px_24px_rgba(91,72,72,0.08)] ${active ? 'bg-[#6f536b] text-white' : 'bg-white/74 text-[#8b7471]'}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex h-10 min-w-0 items-center justify-center gap-2 rounded-[15px] text-sm font-black shadow-[0_8px_18px_rgba(91,72,72,0.08)] transition-[scale,background-color,color] duration-150 ease-out active:scale-[0.96]',
+        active ? 'bg-[#6f536b] text-white' : 'bg-[#f7efe9] text-[#8b7471]',
+      )}
+    >
       {icon}
       {label}
     </button>
   );
 }
 
+function IconActionButton({ disabled, icon, label, onClick, tone }: { disabled: boolean; icon: ReactNode; label: string; onClick: () => void; tone: 'green' | 'blue' }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        'grid h-11 w-11 place-items-center rounded-[16px] bg-[#f7efe9] shadow-[0_8px_18px_rgba(91,72,72,0.08)] transition-[scale,opacity] duration-150 ease-out active:scale-[0.96] disabled:opacity-40',
+        tone === 'green' ? 'text-[#5f775b]' : 'text-[#4f6b7a]',
+      )}
+      aria-label={label}
+      title={label}
+    >
+      {icon}
+    </button>
+  );
+}
+
 function ImagePreview({ originalUrl, resultUrl, bgColor }: { originalUrl: string; resultUrl: string | null; bgColor: string }) {
   return (
-    <div className="relative flex min-h-[280px] items-center justify-center" style={bgColor === 'transparent' ? checkerboard : { backgroundColor: bgColor }}>
-      <img src={resultUrl || originalUrl} alt={resultUrl ? '处理结果' : '原图预览'} className="max-h-[420px] w-full object-contain" />
+    <div className="relative flex h-full min-h-[250px] items-center justify-center overflow-hidden rounded-[22px]" style={bgColor === 'transparent' ? checkerboard : { backgroundColor: bgColor }}>
+      <img src={resultUrl || originalUrl} alt={resultUrl ? '处理结果' : '原图预览'} className="max-h-full w-full object-contain outline outline-1 -outline-offset-1 outline-black/10" />
       {resultUrl && (
-        <div className="absolute left-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-black text-white">
+        <div className="absolute left-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-black text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)]">
           已去背景
         </div>
       )}
