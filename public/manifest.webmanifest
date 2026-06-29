@@ -1,7 +1,7 @@
 {
   "name": "三秋工具箱",
   "short_name": "三秋工具箱",
-  "description": "本地优先的个人工具集 PWA，包含油耗监控和胎教故事助手。",
+  "description": "本地优先的个人工具集 PWA，包含油耗监控、胎教故事助手、本地记账和海外服务指南。",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
