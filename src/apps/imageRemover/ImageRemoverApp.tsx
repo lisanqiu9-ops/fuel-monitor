@@ -2,12 +2,12 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { removeBackground } from '@imgly/background-removal';
 import {
   AlertCircle,
-  ArrowLeft,
   Check,
   FileImage,
   ImageDown,
   Loader2,
   Lock,
+  PackageOpen,
   RotateCcw,
   Sparkles,
   Upload,
@@ -211,28 +211,23 @@ export default function ImageRemoverApp({ onBackToToolbox }: ImageRemoverAppProp
   return (
     <main className="h-dvh overflow-hidden bg-[linear-gradient(180deg,#fffaf2_0%,#f1edf6_55%,#f8f1ea_100%)] text-[#403632] antialiased">
       <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden">
-        <header className="shrink-0 px-4 pb-2 pt-[calc(12px+env(safe-area-inset-top,0px))]">
-          <div className="grid grid-cols-[44px_1fr_44px] items-center gap-3">
-            <button
-              type="button"
-              onClick={onBackToToolbox}
-              className={cn('grid h-11 w-11 place-items-center rounded-full bg-white/78 text-[#7b6662] shadow-[0_10px_24px_rgba(91,72,72,0.10),0_0_0_1px_rgba(255,255,255,0.78)]', pressClass)}
-              aria-label="返回三秋工具箱"
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <div className="min-w-0 text-center">
+        <header className="shrink-0 px-5 pb-3 pt-[calc(18px+env(safe-area-inset-top,0px))]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <p className="text-[11px] font-black leading-4 text-[#a38189]">图片工具</p>
-              <h1 className="truncate text-lg font-black leading-6 text-balance">AI 抠图去背景</h1>
+              <h1 className="mt-1 truncate text-2xl font-black leading-7 tracking-normal text-balance">AI 抠图去背景</h1>
             </div>
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              className={cn('grid h-11 w-11 place-items-center rounded-full bg-[#ead7ea] text-[#76506f] shadow-[0_10px_24px_rgba(118,80,111,0.16)]', pressClass)}
-              aria-label="添加图片"
-            >
-              <Upload size={19} />
-            </button>
+            {onBackToToolbox && (
+              <button
+                type="button"
+                onClick={onBackToToolbox}
+                className={cn('mt-1 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/75 text-[#76506f] shadow-[0_10px_22px_rgba(42,39,35,0.08)] ring-1 ring-white/80', pressClass)}
+                aria-label="返回三秋工具箱"
+                title="返回三秋工具箱"
+              >
+                <PackageOpen size={18} />
+              </button>
+            )}
           </div>
         </header>
 
@@ -245,7 +240,19 @@ export default function ImageRemoverApp({ onBackToToolbox }: ImageRemoverAppProp
                   {activeImage ? `${activeImage.name} · ${formatSize(activeImage.size)}` : '支持 JPG、PNG、WebP，单张不超过 20MB'}
                 </p>
               </div>
-              {state === 'processing' && <span className="shrink-0 text-sm font-black tabular-nums text-[#76506f]">{progress}%</span>}
+              {state === 'processing' ? (
+                <span className="shrink-0 text-sm font-black tabular-nums text-[#76506f]">{progress}%</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => inputRef.current?.click()}
+                  className={cn('inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[#f4ece6] px-3 text-xs font-black text-[#76506f] shadow-[0_8px_18px_rgba(91,72,72,0.08)]', pressClass)}
+                  aria-label="添加图片"
+                >
+                  <Upload size={15} />
+                  添加
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
