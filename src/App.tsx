@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Baby, BookOpenCheck, Car, ChevronRight, Sparkles, WalletCards, Wrench } from 'lucide-react';
+import { useEffect, useMemo, useState, type ComponentType, type Key } from 'react';
+import { Baby, BookOpenCheck, Car, ChevronRight, Search, Sparkles, WalletCards } from 'lucide-react';
 import FuelApp from './apps/fuel/FuelApp';
 import BabyStoryApp from './apps/babyStory/BabyStoryApp';
 import LedgerApp from './apps/ledger/LedgerApp';
@@ -7,15 +7,53 @@ import GuidesApp from './apps/guides/GuidesApp';
 import { cn } from './lib/utils';
 
 type RoutePath = '/' | '/fuel' | '/baby-story' | '/ledger' | '/guides';
-const basePath = (() => { const base = import.meta.env.BASE_URL || '/'; return base === '/' ? '' : base.replace(/\/$/, ''); })();
-const stripBasePath = (pathname: string) => basePath && pathname.startsWith(basePath) ? pathname.slice(basePath.length) || '/' : pathname;
-const normalizePath = (pathname: string): RoutePath => { const path = stripBasePath(pathname); if (path.startsWith('/fuel')) return '/fuel'; if (path.startsWith('/baby-story')) return '/baby-story'; if (path.startsWith('/ledger')) return '/ledger'; if (path.startsWith('/guides')) return '/guides'; return '/'; };
+type ToolCategory = '记录' | '创作' | '知识';
+
+type ToolboxTool = {
+  id: string;
+  title: string;
+  subtitle: string;
+  status: string;
+  description: string;
+  category: ToolCategory;
+  keywords: string[];
+  icon: ComponentType<{ size?: number; className?: string }>;
+  path: RoutePath;
+  tone: string;
+};
+
+const basePath = (() => {
+  const base = import.meta.env.BASE_URL || '/';
+  return base === '/' ? '' : base.replace(/\/$/, '');
+})();
+
+const stripBasePath = (pathname: string) => (basePath && pathname.startsWith(basePath) ? pathname.slice(basePath.length) || '/' : pathname);
+const normalizePath = (pathname: string): RoutePath => {
+  const path = stripBasePath(pathname);
+  if (path.startsWith('/fuel')) return '/fuel';
+  if (path.startsWith('/baby-story')) return '/baby-story';
+  if (path.startsWith('/ledger')) return '/ledger';
+  if (path.startsWith('/guides')) return '/guides';
+  return '/';
+};
 const toBrowserPath = (path: RoutePath) => `${basePath}${path === '/' ? '/' : path}`;
-const navigateTo = (path: RoutePath) => { const next = toBrowserPath(path); if (window.location.pathname !== next) { window.history.pushState({}, '', next); window.dispatchEvent(new PopStateEvent('popstate')); } };
+const navigateTo = (path: RoutePath) => {
+  const next = toBrowserPath(path);
+  if (window.location.pathname !== next) {
+    window.history.pushState({}, '', next);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
+};
 
 export default function App() {
   const [route, setRoute] = useState<RoutePath>(() => normalizePath(window.location.pathname));
-  useEffect(() => { const onPopState = () => setRoute(normalizePath(window.location.pathname)); window.addEventListener('popstate', onPopState); return () => window.removeEventListener('popstate', onPopState); }, []);
+
+  useEffect(() => {
+    const onPopState = () => setRoute(normalizePath(window.location.pathname));
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
   if (route === '/fuel') return <FuelApp onBackToToolbox={() => navigateTo('/')} />;
   if (route === '/baby-story') return <BabyStoryApp onBackToToolbox={() => navigateTo('/')} />;
   if (route === '/ledger') return <LedgerApp onBackToToolbox={() => navigateTo('/')} />;
@@ -24,6 +62,9 @@ export default function App() {
 }
 
 function ToolboxHome() {
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<ToolCategory | '全部'>('全部');
+
   const fuelStatus = useMemo(() => {
     try {
       const raw = localStorage.getItem('fuellog_records');
@@ -60,12 +101,163 @@ function ToolboxHome() {
     }
   }, []);
 
-  const tools = useMemo(() => [
-    { id: 'fuel', title: '油耗监控', subtitle: '记录加油、油耗趋势、费用分析', status: fuelStatus, description: '管理每次加油记录，查看油耗变化和用车成本。', icon: Car, path: '/fuel' as RoutePath, tone: 'bg-[#e8eadf] text-[#5f6d58]' },
-    { id: 'baby-story', title: '胎教故事助手', subtitle: '生成胎教故事、选择音色、合成朗读', status: babyStoryStatus, description: '每天为宝宝写一篇柔软小故事，并用选择的声音朗读。', icon: Baby, path: '/baby-story' as RoutePath, tone: 'bg-[#ead7ea] text-[#76506f]' },
-    { id: 'ledger', title: '本地记账', subtitle: 'CSV导入、消费看板、数据质量检查', status: ledgerStatus, description: '导入快捷指令生成的 ledger.csv，查看月度支出、分类占比、商户排行和异常数据。', icon: WalletCards, path: '/ledger' as RoutePath, tone: 'bg-[#dfece0] text-[#5f775b]' },
-    { id: 'guides', title: '海外服务指南', subtitle: 'Google、Apple ID、ChatGPT、Gemini 教程', status: '5 篇教程 · 风险提示优先', description: '整理海外数字服务注册、地区设置、订阅支付和账号安全排查。', icon: BookOpenCheck, path: '/guides' as RoutePath, tone: 'bg-[#dfe8ee] text-[#4f6b7a]' },
-  ], [babyStoryStatus, fuelStatus, ledgerStatus]);
+  const tools = useMemo<ToolboxTool[]>(
+    () => [
+      {
+        id: 'fuel',
+        title: '油耗监控',
+        subtitle: '加油记录与费用趋势',
+        status: fuelStatus,
+        description: '记录每次加油，查看油耗变化和用车成本。',
+        category: '记录',
+        keywords: ['油耗', '加油', '车辆', '费用', 'OCR'],
+        icon: Car,
+        path: '/fuel',
+        tone: 'bg-[#e8eadf] text-[#5f6d58]',
+      },
+      {
+        id: 'baby-story',
+        title: '胎教故事助手',
+        subtitle: '故事生成与合成朗读',
+        status: babyStoryStatus,
+        description: '每天为宝宝生成一篇小故事，并用选择的声音朗读。',
+        category: '创作',
+        keywords: ['胎教', '故事', '朗读', 'AI', '宝宝'],
+        icon: Baby,
+        path: '/baby-story',
+        tone: 'bg-[#ead7ea] text-[#76506f]',
+      },
+      {
+        id: 'ledger',
+        title: '本地记账',
+        subtitle: 'CSV 导入与消费看板',
+        status: ledgerStatus,
+        description: '导入 ledger.csv，查看月度支出、分类和异常数据。',
+        category: '记录',
+        keywords: ['记账', 'CSV', '流水', '消费', '支出'],
+        icon: WalletCards,
+        path: '/ledger',
+        tone: 'bg-[#dfece0] text-[#5f775b]',
+      },
+      {
+        id: 'guides',
+        title: '海外服务指南',
+        subtitle: 'Google / Apple ID 教程',
+        status: '5 篇教程 · 风险提示优先',
+        description: '整理海外数字服务注册、订阅支付和账号安全排查。',
+        category: '知识',
+        keywords: ['Google', 'Apple ID', 'ChatGPT', 'Gemini', '教程', '安全'],
+        icon: BookOpenCheck,
+        path: '/guides',
+        tone: 'bg-[#dfe8ee] text-[#4f6b7a]',
+      },
+    ],
+    [babyStoryStatus, fuelStatus, ledgerStatus],
+  );
 
-  return <main className="soft-scrollbar h-dvh overflow-y-auto bg-[linear-gradient(180deg,#fffaf2_0%,#f3edf6_52%,#f8f1ea_100%)] px-5 pb-[calc(28px+env(safe-area-inset-bottom,0px))] pt-[calc(28px+env(safe-area-inset-top,0px))] text-[#403632]"><div className="mx-auto flex min-h-[calc(100dvh-56px)] w-full max-w-md flex-col"><header className="mb-7"><div className="inline-flex items-center gap-2 rounded-full border border-white/75 bg-white/70 px-3 py-2 text-xs font-black text-[#8d7470] shadow-sm"><Sparkles size={15} />个人工具箱 PWA</div><h1 className="mt-4 text-3xl font-black tracking-normal">三秋工具箱</h1><p className="mt-3 max-w-sm text-sm font-bold leading-6 text-[#8b7471]">一个入口放下日常小工具：本地数据保存在当前设备，云端服务仅用于 OCR、AI 生成或朗读。</p></header><section className="space-y-4">{tools.map(tool => { const Icon = tool.icon; return <button key={tool.id} type="button" onClick={() => navigateTo(tool.path)} className="group w-full rounded-[28px] border border-white/80 bg-white/78 p-4 text-left shadow-[0_16px_36px_rgba(91,72,72,0.10)] backdrop-blur transition active:scale-[0.99]"><div className="flex items-start gap-4"><div className={cn('grid h-14 w-14 shrink-0 place-items-center rounded-3xl', tool.tone)}><Icon size={28} /></div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-black">{tool.title}</h2><p className="mt-1 text-xs font-black text-[#a38189]">{tool.subtitle}</p></div><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f5ede8] text-[#8b7471] transition group-active:translate-x-0.5"><ChevronRight size={18} /></span></div><p className="mt-3 rounded-2xl bg-[#f7efe9] px-3 py-2 text-xs font-black text-[#7d6965]">{tool.status}</p><p className="mt-3 text-sm font-semibold leading-6 text-[#7d6965]">{tool.description}</p><span className="mt-4 inline-flex h-10 items-center rounded-2xl bg-[#6f536b] px-4 text-sm font-black text-white">进入{tool.title}</span></div></div></button>; })}</section><footer className="mt-auto pt-8 text-center text-xs font-bold leading-6 text-[#aa918e]"><div className="mx-auto inline-flex items-center gap-2 rounded-full bg-white/60 px-3 py-2"><Wrench size={14} />本地优先，备份迁移由你掌握</div></footer></div></main>;
+  const categories = useMemo(() => ['全部', '记录', '创作', '知识'] as const, []);
+  const filteredTools = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return tools.filter(tool => {
+      const matchesCategory = category === '全部' || tool.category === category;
+      if (!matchesCategory) return false;
+      if (!needle) return true;
+      return [tool.title, tool.subtitle, tool.description, tool.status, tool.category, ...tool.keywords].join(' ').toLowerCase().includes(needle);
+    });
+  }, [category, query, tools]);
+
+  return (
+    <main className="h-dvh overflow-hidden bg-[linear-gradient(180deg,#fffaf2_0%,#f3edf6_52%,#f8f1ea_100%)] text-[#403632] antialiased">
+      <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden">
+        <header className="shrink-0 px-5 pb-3 pt-[calc(18px+env(safe-area-inset-top,0px))]">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="inline-flex h-8 items-center gap-2 rounded-full bg-white/72 px-3 text-xs font-black text-[#8d7470] shadow-[0_8px_20px_rgba(91,72,72,0.08),0_0_0_1px_rgba(255,255,255,0.78)]">
+                <Sparkles size={14} />
+                个人工具箱 PWA
+              </div>
+              <h1 className="mt-3 text-2xl font-black leading-8 tracking-normal text-balance">三秋工具箱</h1>
+            </div>
+            <div className="rounded-[20px] bg-white/70 px-3 py-2 text-right shadow-[0_8px_20px_rgba(91,72,72,0.08),0_0_0_1px_rgba(255,255,255,0.78)]">
+              <p className="text-[10px] font-black text-[#a38189]">已接入</p>
+              <p className="mt-0.5 text-lg font-black leading-5 tabular-nums">{tools.length}</p>
+            </div>
+          </div>
+
+          <label className="mt-4 flex h-11 items-center gap-3 rounded-[20px] bg-white/76 px-3 text-[#8b7471] shadow-[0_12px_28px_rgba(91,72,72,0.09),0_0_0_1px_rgba(255,255,255,0.82)]">
+            <Search size={18} />
+            <input
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+              placeholder="搜索工具、场景或服务"
+              className="min-w-0 flex-1 bg-transparent text-sm font-bold text-[#403632] outline-none placeholder:text-[#ad9691]"
+            />
+          </label>
+
+          <nav className="no-scrollbar mt-3 flex gap-2 overflow-x-auto" aria-label="工具分类">
+            {categories.map(item => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setCategory(item)}
+                className={cn(
+                  'h-10 shrink-0 rounded-[18px] px-4 text-xs font-black transition-[transform,background-color,color,box-shadow] active:scale-[0.96]',
+                  category === item ? 'bg-[#6f536b] text-white shadow-[0_8px_18px_rgba(111,83,107,0.22)]' : 'bg-white/70 text-[#8b7471] shadow-[0_0_0_1px_rgba(255,255,255,0.74)]',
+                )}
+              >
+                {item}
+              </button>
+            ))}
+          </nav>
+        </header>
+
+        <section className="soft-scrollbar min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(26px+env(safe-area-inset-bottom,0px))]">
+          <div className="mb-3 flex items-center justify-between px-1">
+            <h2 className="text-sm font-black text-[#403632]">工具入口</h2>
+            <span className="text-xs font-black text-[#a38189] tabular-nums">{filteredTools.length} / {tools.length}</span>
+          </div>
+
+          {filteredTools.length ? (
+            <section className="grid grid-cols-2 gap-3">
+              {filteredTools.map(tool => <ToolLauncher key={tool.id} tool={tool} onOpen={() => navigateTo(tool.path)} />)}
+            </section>
+          ) : (
+            <section className="rounded-[24px] bg-white/76 p-5 text-center shadow-[0_14px_34px_rgba(91,72,72,0.09),0_0_0_1px_rgba(255,255,255,0.82)]">
+              <Search className="mx-auto text-[#a38189]" size={24} />
+              <h2 className="mt-3 text-base font-black text-balance">没有找到匹配工具</h2>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[#8b7471] text-pretty">换个关键词，或切回“全部”分类查看所有入口。</p>
+            </section>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function ToolLauncher({ tool, onOpen }: { tool: ToolboxTool; onOpen: () => void; key?: Key }) {
+  const Icon = tool.icon;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group flex min-h-[150px] flex-col rounded-[24px] bg-white/80 p-3 text-left shadow-[0_14px_34px_rgba(91,72,72,0.10),0_0_0_1px_rgba(255,255,255,0.82)] backdrop-blur transition-[transform,box-shadow] active:scale-[0.96]"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-[17px]', tool.tone)}>
+          <Icon size={22} />
+        </span>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f5ede8] text-[#8b7471] transition-transform group-active:translate-x-0.5">
+          <ChevronRight size={17} />
+        </span>
+      </div>
+      <div className="mt-3 min-w-0">
+        <h2 className="text-[15px] font-black leading-5 text-balance">{tool.title}</h2>
+        <p className="mt-1 line-clamp-1 text-[11px] font-black leading-4 text-[#a38189] text-pretty">{tool.subtitle}</p>
+      </div>
+      <div className="mt-auto pt-3">
+        <p className="truncate rounded-[16px] bg-[#f7efe9] px-3 py-2 text-[11px] font-black text-[#7d6965]">{tool.status}</p>
+      </div>
+    </button>
+  );
 }
