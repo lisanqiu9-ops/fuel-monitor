@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState, type ComponentType, type Key } from 'react';
-import { Baby, BookOpenCheck, Car, ChevronRight, Search, Sparkles, WalletCards } from 'lucide-react';
+import { Baby, BookOpenCheck, Car, ChevronRight, Images, Search, Sparkles, WalletCards } from 'lucide-react';
 import FuelApp from './apps/fuel/FuelApp';
 import BabyStoryApp from './apps/babyStory/BabyStoryApp';
 import LedgerApp from './apps/ledger/LedgerApp';
 import GuidesApp from './apps/guides/GuidesApp';
+import ImageRemoverApp from './apps/imageRemover/ImageRemoverApp';
 import { cn } from './lib/utils';
 
-type RoutePath = '/' | '/fuel' | '/baby-story' | '/ledger' | '/guides';
-type ToolCategory = '记录' | '创作' | '知识';
+type RoutePath = '/' | '/fuel' | '/baby-story' | '/ledger' | '/guides' | '/image-remover';
+type ToolCategory = '记录' | '创作' | '知识' | '图片';
 
 type ToolboxTool = {
   id: string;
@@ -34,6 +35,7 @@ const normalizePath = (pathname: string): RoutePath => {
   if (path.startsWith('/baby-story')) return '/baby-story';
   if (path.startsWith('/ledger')) return '/ledger';
   if (path.startsWith('/guides')) return '/guides';
+  if (path.startsWith('/image-remover')) return '/image-remover';
   return '/';
 };
 const toBrowserPath = (path: RoutePath) => `${basePath}${path === '/' ? '/' : path}`;
@@ -58,6 +60,7 @@ export default function App() {
   if (route === '/baby-story') return <BabyStoryApp onBackToToolbox={() => navigateTo('/')} />;
   if (route === '/ledger') return <LedgerApp onBackToToolbox={() => navigateTo('/')} />;
   if (route === '/guides') return <GuidesApp onBackToToolbox={() => navigateTo('/')} />;
+  if (route === '/image-remover') return <ImageRemoverApp onBackToToolbox={() => navigateTo('/')} />;
   return <ToolboxHome />;
 }
 
@@ -99,6 +102,11 @@ function ToolboxHome() {
     } catch {
       return '本地 CSV · 状态待检查';
     }
+  }, []);
+
+  const imageRemoverStatus = useMemo(() => {
+    const cloudReady = Boolean(import.meta.env.VITE_REMOVE_BG_KEY);
+    return `本地优先 · 云端${cloudReady ? '可用' : '未配置'}`;
   }, []);
 
   const tools = useMemo<ToolboxTool[]>(
@@ -151,11 +159,23 @@ function ToolboxHome() {
         path: '/guides',
         tone: 'bg-[#dfe8ee] text-[#4f6b7a]',
       },
+      {
+        id: 'image-remover',
+        title: 'AI 抠图去背景',
+        subtitle: '透明底与换底色下载',
+        status: imageRemoverStatus,
+        description: '上传图片后在浏览器内移除背景，支持透明 PNG、白底 JPG 和多图队列。',
+        category: '图片',
+        keywords: ['抠图', '去背景', '图片', '透明', 'PNG', 'JPG', 'AI'],
+        icon: Images,
+        path: '/image-remover',
+        tone: 'bg-[#ead7ea] text-[#76506f]',
+      },
     ],
-    [babyStoryStatus, fuelStatus, ledgerStatus],
+    [babyStoryStatus, fuelStatus, imageRemoverStatus, ledgerStatus],
   );
 
-  const categories = useMemo(() => ['全部', '记录', '创作', '知识'] as const, []);
+  const categories = useMemo(() => ['全部', '记录', '创作', '知识', '图片'] as const, []);
   const filteredTools = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return tools.filter(tool => {
