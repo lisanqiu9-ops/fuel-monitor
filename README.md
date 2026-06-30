@@ -29,54 +29,68 @@ Cloudflare Worker 需要配置这些变量：
 ```text
 BAIDU_API_KEY=你的百度 API Key
 BAIDU_SECRET_KEY=你的百度 Secret Key
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,https://你的用户名.github.io
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,https://liwu.dpdns.org,https://lisanqiu9-ops.github.io
 OCR_ACCESS_TOKEN=可选访问令牌
 ```
 
 如果设置了 `OCR_ACCESS_TOKEN`，需要在应用设置页里填写同一个访问令牌。这个令牌用于减少别人直接调用你的 Worker 消耗 OCR 额度的风险。
 
-## 部署到 GitHub Pages
+## 部署路线
 
-项目已经包含 GitHub Actions 工作流：`.github/workflows/deploy.yml`。
-
-推荐仓库名使用英文，例如：
+当前线上主站是 Cloudflare Pages：
 
 ```text
-fuel-monitor
+Cloudflare Pages project: sanqiu-toolbox
+Custom domain: https://liwu.dpdns.org
 ```
 
-部署步骤：
-
-1. 在 GitHub 新建仓库。
-2. 把本项目代码上传到仓库的 `main` 分支。
-3. 进入仓库的 `Settings` - `Pages`。
-4. `Source` 选择 `GitHub Actions`。
-5. 等待 Actions 里的 `Deploy to GitHub Pages` 执行完成。
-
-如果仓库名是 `fuel-monitor`，部署地址通常类似：
+GitHub Pages 只作为备份预览：
 
 ```text
-https://你的用户名.github.io/fuel-monitor/
+https://lisanqiu9-ops.github.io/fuel-monitor/
 ```
 
-如果仓库名是 `你的用户名.github.io`，部署地址通常是：
+### 自动部署
+
+仓库包含两个 workflow：
+
+- `.github/workflows/deploy-cloudflare-pages.yml`：发布到 Cloudflare Pages 主站。
+- `.github/workflows/deploy.yml`：发布到 GitHub Pages 备份预览。
+
+Cloudflare Pages workflow 需要在 GitHub 仓库配置这些 Secrets：
 
 ```text
-https://你的用户名.github.io/
+CLOUDFLARE_API_TOKEN
+CLOUDFLARE_ACCOUNT_ID
 ```
 
-工作流会自动设置 Vite 的 `base` 路径，普通仓库和 `用户名.github.io` 仓库都能用。
+如果 Secrets 未配置，workflow 会跳过 Cloudflare 发布。此时可以在本机手动发布：
+
+```bash
+npm run lint
+npm run build
+npm run deploy:cloudflare
+```
+
+常规发布前检查：
+
+```bash
+npm run lint
+npm run build
+```
+
+更多工程结构、找代码路径和开发原则见：`docs/engineering-guide.md`。
 
 ## 部署后 OCR 设置
 
-部署完成后，把 GitHub Pages 的来源域名加入 Cloudflare Worker 的 `ALLOWED_ORIGINS`。
+部署完成后，把线上主站和备份预览的来源域名加入 Cloudflare Worker 的 `ALLOWED_ORIGINS`。
 
-注意：`ALLOWED_ORIGINS` 填的是浏览器来源，只到域名为止，不包含后面的项目路径。比如页面地址是 `https://你的用户名.github.io/fuel-monitor/`，这里填写 `https://你的用户名.github.io`。
+注意：`ALLOWED_ORIGINS` 填的是浏览器来源，只到域名为止，不包含后面的项目路径。主站填写 `https://liwu.dpdns.org`；备份预览 `https://lisanqiu9-ops.github.io/fuel-monitor/` 对应填写 `https://lisanqiu9-ops.github.io`。
 
 例如：
 
 ```text
-http://localhost:3000,http://localhost:3001,https://你的用户名.github.io/fuel-monitor
+http://localhost:3000,http://localhost:3001,https://liwu.dpdns.org,https://lisanqiu9-ops.github.io
 ```
 
 然后在油耗监控设置页填写：
