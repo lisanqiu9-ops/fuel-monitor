@@ -47,6 +47,7 @@ const checkerboard = {
 };
 
 const pressClass = 'transition-transform duration-150 ease-out active:scale-[0.96]';
+const CLOUD_REMOVE_BG_ENDPOINT = 'https://sanqiu-toolbox-api.lisanqiu9.workers.dev/api/image/remove-bg';
 const formatSize = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
 
 export default function ImageRemoverApp({ onBackToToolbox }: ImageRemoverAppProps) {
@@ -108,7 +109,7 @@ export default function ImageRemoverApp({ onBackToToolbox }: ImageRemoverAppProp
     formData.append('image_file', file);
     formData.append('size', 'auto');
 
-    const response = await fetch('/api/image/remove-bg', {
+    const response = await fetch(CLOUD_REMOVE_BG_ENDPOINT, {
       method: 'POST',
       body: formData,
     });
