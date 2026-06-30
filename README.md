@@ -64,7 +64,7 @@ CLOUDFLARE_API_TOKEN
 CLOUDFLARE_ACCOUNT_ID
 ```
 
-如果 Secrets 未配置，workflow 会跳过 Cloudflare 发布。此时可以在本机手动发布：
+如果 Secrets 未配置，Cloudflare workflow 会失败，避免误以为主站已发布。临时应急可以在本机手动发布：
 
 ```bash
 npm run lint

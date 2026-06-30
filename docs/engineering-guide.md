@@ -120,7 +120,7 @@ CLOUDFLARE_API_TOKEN
 CLOUDFLARE_ACCOUNT_ID
 ```
 
-如果 secrets 未配置，Cloudflare workflow 会跳过发布并在日志里提示。此时只能本地运行：
+如果 secrets 未配置，Cloudflare workflow 必须失败，避免误以为主站已经发布。此时只能本地运行：
 
 ```bash
 npm run lint
