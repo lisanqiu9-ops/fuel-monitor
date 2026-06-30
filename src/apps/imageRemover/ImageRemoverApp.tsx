@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { removeBackground } from '@imgly/background-removal';
 import {
   AlertCircle,
+  ArrowLeftRight,
   Check,
   FileImage,
   ImageDown,
@@ -441,13 +442,80 @@ function IconActionButton({ disabled, icon, label, onClick, tone }: { disabled: 
 }
 
 function ImagePreview({ originalUrl, resultUrl, bgColor }: { originalUrl: string; resultUrl: string | null; bgColor: string }) {
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const [compareX, setCompareX] = useState(54);
+  const [isComparing, setIsComparing] = useState(false);
+  const hasResult = Boolean(resultUrl);
+
+  const updateComparePosition = useCallback((clientX: number) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    const next = ((clientX - rect.left) / rect.width) * 100;
+    setCompareX(Math.max(8, Math.min(92, next)));
+  }, []);
+
+  const startCompare = useCallback((event: ReactPointerEvent<HTMLButtonElement | HTMLDivElement>) => {
+    if (!hasResult) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setIsComparing(true);
+    updateComparePosition(event.clientX);
+  }, [hasResult, updateComparePosition]);
+
+  const moveCompare = useCallback((event: ReactPointerEvent<HTMLButtonElement | HTMLDivElement>) => {
+    if (!isComparing || !hasResult) return;
+    updateComparePosition(event.clientX);
+  }, [hasResult, isComparing, updateComparePosition]);
+
+  const stopCompare = useCallback(() => setIsComparing(false), []);
+
   return (
-    <div className="relative flex h-full min-h-[250px] items-center justify-center overflow-hidden rounded-[22px]" style={bgColor === 'transparent' ? checkerboard : { backgroundColor: bgColor }}>
+    <div
+      ref={stageRef}
+      className="relative flex h-full min-h-[250px] touch-none select-none items-center justify-center overflow-hidden rounded-[22px]"
+      style={bgColor === 'transparent' ? checkerboard : { backgroundColor: bgColor }}
+      onPointerDown={startCompare}
+      onPointerMove={moveCompare}
+      onPointerUp={stopCompare}
+      onPointerCancel={stopCompare}
+    >
       <img src={resultUrl || originalUrl} alt={resultUrl ? '处理结果' : '原图预览'} className="max-h-full w-full object-contain outline outline-1 -outline-offset-1 outline-black/10" />
-      {resultUrl && (
-        <div className="absolute left-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-black text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)]">
-          已去背景
-        </div>
+
+      {hasResult && resultUrl && (
+        <>
+          <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 ${100 - compareX}% 0 0)` }}>
+            <div className="flex h-full items-center justify-center" style={bgColor === 'transparent' ? undefined : { backgroundColor: bgColor }}>
+              <img src={originalUrl} alt="原图对比" className="max-h-full w-full object-contain outline outline-1 -outline-offset-1 outline-black/10" />
+            </div>
+          </div>
+
+          <div className="pointer-events-none absolute inset-y-3 w-0.5 rounded-full bg-white/95 shadow-[0_0_0_1px_rgba(0,0,0,0.10),0_8px_18px_rgba(0,0,0,0.18)] transition-[left] duration-75 ease-out" style={{ left: `${compareX}%` }} />
+
+          <button
+            type="button"
+            aria-label="拖动查看去背景前后对比"
+            title="拖动查看前后对比"
+            onPointerDown={startCompare}
+            onPointerMove={moveCompare}
+            onPointerUp={stopCompare}
+            onPointerCancel={stopCompare}
+            className={cn(
+              'absolute top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/92 text-[#76506f] shadow-[0_12px_28px_rgba(42,39,35,0.18),0_0_0_1px_rgba(255,255,255,0.92)] transition-[left,scale,box-shadow] duration-150 ease-out active:scale-[0.96]',
+              isComparing && 'shadow-[0_14px_34px_rgba(118,80,111,0.28),0_0_0_3px_rgba(118,80,111,0.18)]',
+            )}
+            style={{ left: `${compareX}%` }}
+          >
+            <ArrowLeftRight size={18} />
+          </button>
+
+          <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-black text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)]">
+            原图
+          </div>
+          <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs font-black text-white shadow-[0_8px_18px_rgba(0,0,0,0.16)]">
+            已去背景
+          </div>
+        </>
       )}
     </div>
   );
