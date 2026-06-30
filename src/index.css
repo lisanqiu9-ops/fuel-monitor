@@ -2592,3 +2592,85 @@ body {
   line-height: 1.6;
   font-weight: 700;
 }
+
+.ocr-fill-confirm-card {
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  box-shadow: 0 12px 26px rgba(42, 39, 35, 0.075);
+  backdrop-filter: blur(18px);
+  padding: 15px;
+}
+
+.ocr-fill-confirm-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ocr-fill-confirm-head strong {
+  color: #191817;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.ocr-fill-confirm-head span {
+  color: #8d8981;
+  text-align: right;
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 750;
+}
+
+.ocr-fill-segment {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  border-radius: 14px;
+  background: rgba(235, 232, 225, 0.72);
+  padding: 5px;
+}
+
+.ocr-fill-segment button {
+  min-height: 38px;
+  border-radius: 11px;
+  color: #8d8981;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.ocr-fill-segment button.is-active {
+  background: #1f1e1b;
+  color: #fffdf9;
+  box-shadow: 0 8px 18px rgba(31, 30, 27, 0.12);
+}
+
+.ocr-fill-confirm-card p {
+  margin-top: 10px;
+  border-radius: 12px;
+  background: rgba(197, 139, 49, 0.1);
+  border: 1px solid rgba(197, 139, 49, 0.14);
+  color: #9a6a20;
+  padding: 10px 11px;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 750;
+}
+
+.fill-type-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(21, 128, 61, 0.1);
+  color: #15803d;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.fill-type-pill.is-partial {
+  background: rgba(197, 139, 49, 0.12);
+  color: #9a6a20;
+}

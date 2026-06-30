@@ -24,6 +24,7 @@ export const createFuelCsv = (records: FuelRecord[]) => {
   const headers = [
     '日期',
     '油品',
+    '加油方式',
     '行驶里程(km)',
     '加油量(L)',
     '实付金额(元)',
@@ -38,6 +39,7 @@ export const createFuelCsv = (records: FuelRecord[]) => {
   const rows = normalizeFuelRecords(records).map(record => [
     record.date,
     record.fuelType ?? '',
+    record.fillType === 'partial' ? '固定金额/未加满' : '加满跳枪',
     fmt(record.drivenKm, 2),
     fmt(record.fuelLiters, 2),
     fmt(record.totalCost, 2),
@@ -92,6 +94,7 @@ export const createRecordNotesSummary = (record: FuelRecord) => {
     '',
     '基础数据：',
     `行驶里程：${record.drivenKm !== null ? record.drivenKm.toFixed(0) : '--'} km`,
+    `加油方式：${record.fillType === 'partial' ? '固定金额/未加满' : '加满跳枪'}`,
     `加油量：${record.fuelLiters.toFixed(2)} L`,
     `实付金额：${record.totalCost.toFixed(2)} 元`,
     `当日油价：${record.pricePerLiter.toFixed(2)} 元/L`,

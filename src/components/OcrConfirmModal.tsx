@@ -1,10 +1,17 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, AlertTriangle, ChevronLeft, Plus, Loader2, ClipboardList } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { generateOcrPreviewReport } from '../lib/report';
+import type { FuelFillType } from '../types';
 
+const isLikelyFixedAmount = (value: unknown) => {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 100) return false;
+  const nearestHundred = Math.round(amount / 100) * 100;
+  return nearestHundred >= 100 && Math.abs(amount - nearestHundred) <= 2;
+};
 interface Props {
   data: any;
   confidence: any;
@@ -16,7 +23,9 @@ interface Props {
 
 export function OcrConfirmModal({ data, confidence, onConfirm, onCancel, onAddMore, isProcessingMore }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fillType, setFillType] = useState<FuelFillType>('full');
   const report = generateOcrPreviewReport(data);
+  const fixedAmountHint = isLikelyFixedAmount(data.totalCost);
   
   const StatusIcon = ({ status }: { status: 'high' | 'low' | null }) => {
     if (status === 'high') return <Check size={16} className="text-green-400" />;
@@ -162,6 +171,35 @@ export function OcrConfirmModal({ data, confidence, onConfirm, onCancel, onAddMo
             
           </div>
 
+
+          <div className="ocr-fill-confirm-card">
+            <div className="ocr-fill-confirm-head">
+              <strong>本次是否加满跳枪</strong>
+              <span>默认按加满跳枪入库，请保存前确认。</span>
+            </div>
+            <div className="ocr-fill-segment">
+              <button
+                type="button"
+                onClick={() => setFillType('full')}
+                className={fillType === 'full' ? 'is-active' : ''}
+              >
+                加满跳枪
+              </button>
+              <button
+                type="button"
+                onClick={() => setFillType('partial')}
+                className={fillType === 'partial' ? 'is-active' : ''}
+              >
+                固定金额/未加满
+              </button>
+            </div>
+            {fixedAmountHint && (
+              <p>识别金额接近整百，可能是固定金额加油。请确认是否真的加满跳枪。</p>
+            )}
+            {fillType === 'partial' && (
+              <p>未加满记录会保存费用和升数，不单独计算实际油耗；下一次加满后合并区间计算。</p>
+            )}
+          </div>
           <div className={`ocr-report-card report-tone-${report.tone}`}>
             <div className="ocr-report-title">
               <ClipboardList size={16} />
@@ -189,7 +227,7 @@ export function OcrConfirmModal({ data, confidence, onConfirm, onCancel, onAddMo
       <div className="ocr-confirm-footer p-4 pb-safe shrink-0">
         <button 
           type="button"
-          onClick={() => onConfirm(data)}
+          onClick={() => onConfirm({ ...data, fillType })}
           className="w-full py-4 rounded-xl font-bold"
         >
           确认填入

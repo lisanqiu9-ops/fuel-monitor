@@ -1,6 +1,9 @@
+export type FuelFillType = 'full' | 'partial';
+
 export interface FuelRecord {
   id: string;
   date: string; // YYYY-MM-DD
+  fillType: FuelFillType;
   fuelLiters: number;
   pricePerLiter: number;
   totalCost: number;

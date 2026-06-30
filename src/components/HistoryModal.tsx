@@ -60,6 +60,9 @@ export function HistoryModal({ records, onClose, onDelete, onRecordClick }: Prop
                         <span>{format(parseISO(record.date), 'yyyy-MM-dd')}</span>
                         <span>·</span>
                         <span>{record.fuelLiters} L</span>
+                        <span className={cn('fill-type-pill', record.fillType === 'partial' && 'is-partial')}>
+                          {record.fillType === 'partial' ? '未加满' : '跳枪'}
+                        </span>
                         {record.fuelType && (
                           <>
                             <span>·</span>
@@ -80,7 +83,7 @@ export function HistoryModal({ records, onClose, onDelete, onRecordClick }: Prop
                     )}
                     onClick={() => onRecordClick(record)}
                   >
-                    {record.actualFuelPer100 !== null ? `${record.actualFuelPer100.toFixed(2)} L/100km` : '未解算'}
+                    {record.actualFuelPer100 !== null ? `${record.actualFuelPer100.toFixed(2)} L/100km` : record.fillType === 'partial' ? '待加满闭合' : '未解算'}
                   </button>
                   <button
                     type="button"

@@ -118,6 +118,13 @@ const buildStats = (records: FuelRecord[]): FuelReportStats => {
   const totalKm = records.reduce((sum, record) => sum + (record.drivenKm ?? 0), 0);
   const totalLiters = records.reduce((sum, record) => sum + record.fuelLiters, 0);
   const totalCost = records.reduce((sum, record) => sum + record.totalCost, 0);
+  const validFuelRecords = records.filter(record => record.actualFuelPer100 !== null);
+  const fuelValues = validFuelRecords.map(record => record.actualFuelPer100!);
+  const costValues = validFuelRecords
+    .map(record => record.costPerKm)
+    .filter((value): value is number => value !== null);
+  const avgFuelPer100 = average(fuelValues);
+  const avgCostPerKm = average(costValues);
   const displayErrors = records
     .filter(record => record.actualFuelPer100 !== null && record.dashboardFuelPer100 !== null)
     .map(record => record.dashboardFuelPer100! - record.actualFuelPer100!);
@@ -127,9 +134,9 @@ const buildStats = (records: FuelRecord[]): FuelReportStats => {
     totalKm: round(totalKm, 2),
     totalLiters: round(totalLiters, 2),
     totalCost: round(totalCost, 2),
-    avgFuelPer100: totalKm > 0 ? round((totalLiters / totalKm) * 100, 2) : null,
-    avgCostPerKm: totalKm > 0 ? round(totalCost / totalKm, 2) : null,
-    costPer100Km: totalKm > 0 ? round((totalCost / totalKm) * 100, 2) : null,
+    avgFuelPer100: avgFuelPer100 !== null ? round(avgFuelPer100, 2) : null,
+    avgCostPerKm: avgCostPerKm !== null ? round(avgCostPerKm, 2) : null,
+    costPer100Km: avgCostPerKm !== null ? round(avgCostPerKm * 100, 2) : null,
     weightedPrice: totalLiters > 0 ? round(totalCost / totalLiters, 2) : null,
     maxFuelRecord: pickExtreme(records, 'actualFuelPer100', 'max'),
     minFuelRecord: pickExtreme(records, 'actualFuelPer100', 'min'),

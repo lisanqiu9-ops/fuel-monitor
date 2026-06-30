@@ -67,6 +67,7 @@ export function TrendTab({ records }: Props) {
   const avgDisplayError = enriched.filter(r => r.displayError !== null).length > 0
     ? enriched.filter(r => r.displayError !== null).reduce((sum, r) => sum + (r.displayError ?? 0), 0) / enriched.filter(r => r.displayError !== null).length
     : null;
+  const partialCount = enriched.filter(r => r.fillType === 'partial').length;
   const report = generateTrendReport(records);
 
   const getCostColor = (value: number) => {
@@ -124,7 +125,7 @@ export function TrendTab({ records }: Props) {
             <strong>{avgDisplayError !== null ? `${avgDisplayError > 0 ? '+' : ''}${avgDisplayError.toFixed(2)}` : '--'}</strong>
           </div>
         </div>
-        <p>{latest.odoMessage}</p>
+        <p>{partialCount > 0 ? `${partialCount} 条未加满记录已计入费用，等待后续加满后参与区间油耗计算。` : latest.odoMessage}</p>
       </section>
 
       <section className={`analysis-card trend-report-card report-tone-${report.tone}`}>
@@ -201,11 +202,11 @@ export function TrendTab({ records }: Props) {
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold text-[#e8ecf4]">{record.date}</div>
               <div className="text-[11px] text-[#6b7a99]">
-                {record.drivenKm ?? '--'} km · {record.actualFuelPer100 !== null ? `${record.actualFuelPer100.toFixed(2)} L/100km` : '缺少里程'}
+                {record.drivenKm ?? '--'} km · {record.actualFuelPer100 !== null ? `${record.actualFuelPer100.toFixed(2)} L/100km` : record.fillType === 'partial' ? '等待加满闭合' : '缺少里程'}
               </div>
             </div>
             <div className={cn('quality-pill', `quality-${record.odoStatus}`)}>
-              {record.odoStatus === 'high' ? '高' : record.odoStatus === 'invalid' ? '异常' : record.odoStatus === 'warn' ? '复核' : '缺失'}
+              {record.fillType === 'partial' ? '未加满' : record.odoStatus === 'high' ? '高' : record.odoStatus === 'invalid' ? '异常' : record.odoStatus === 'warn' ? '复核' : '缺失'}
             </div>
           </div>
         ))}

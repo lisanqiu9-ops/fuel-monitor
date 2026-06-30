@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, Camera, Image as ImageIcon, Loader2, Upload, X } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import type { FuelRecord } from '../types';
+import type { FuelFillType, FuelRecord } from '../types';
 import { callBaiduOCR, compressImage, parseOCRData } from '../lib/ocr';
 import { OcrConfirmModal } from './OcrConfirmModal';
 
@@ -116,12 +116,14 @@ export function OcrCaptureModal({ onClose, onSave, onNeedManualReview }: Props) 
     }
 
     const dKm = data.drivenKm ? Number(data.drivenKm) : null;
-    const actualFuelP100 = dKm && dKm > 0 ? Number(((liters / dKm) * 100).toFixed(2)) : null;
-    const costPKm = dKm && dKm > 0 ? Number((cost / dKm).toFixed(3)) : null;
+    const fillType: FuelFillType = data.fillType === 'partial' ? 'partial' : 'full';
+    const actualFuelP100 = fillType === 'full' && dKm && dKm > 0 ? Number(((liters / dKm) * 100).toFixed(2)) : null;
+    const costPKm = fillType === 'full' && dKm && dKm > 0 ? Number((cost / dKm).toFixed(3)) : null;
 
     onSave({
       id: uuidv4(),
       date: recordDate,
+      fillType,
       fuelLiters: liters,
       pricePerLiter: price,
       totalCost: Number(cost.toFixed(2)),

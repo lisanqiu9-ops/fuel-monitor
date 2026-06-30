@@ -56,6 +56,7 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
     { icon: WalletCards, label: '总价', value: formatMoney(record.totalCost, 0), primary: true },
     { icon: Tag, label: '单价', value: `${formatMoney(record.pricePerLiter, 2)}/L`, primary: false },
     { icon: Fuel, label: '油号', value: record.fuelType || '--', primary: false },
+    { icon: Fuel, label: '加油方式', value: record.fillType === 'partial' ? '固定金额/未加满' : '加满跳枪', primary: false },
   ];
 
   const dashboardStats = [
@@ -91,7 +92,7 @@ export function RecordDetailModal({ record, allRecords, onClose }: Props) {
           <Calendar size={18} />
           <div>
             <span>{record.date}</span>
-            <small>{record.fuelType || '加油记录'} · {record.fuelLiters} L</small>
+            <small>{record.fuelType || '加油记录'} · {record.fuelLiters} L · {record.fillType === 'partial' ? '未加满' : '跳枪'}</small>
           </div>
         </section>
 

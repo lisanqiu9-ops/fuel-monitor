@@ -1,4 +1,4 @@
-import { FuelRecord } from './types';
+import { FuelFillType, FuelRecord } from './types';
 import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'fuellog_records';
@@ -24,6 +24,10 @@ const isValidDate = (value: unknown): value is string => {
   return !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
 };
 
+const parseFillType = (value: unknown): FuelFillType => (
+  value === 'partial' ? 'partial' : 'full'
+);
+
 const normalizeRecord = (raw: unknown): FuelRecord | null => {
   if (!raw || typeof raw !== 'object') return null;
   const value = raw as Partial<FuelRecord>;
@@ -35,23 +39,17 @@ const normalizeRecord = (raw: unknown): FuelRecord | null => {
   const totalCost = parseRequiredPositiveNumber(value.totalCost);
   if (fuelLiters === null || pricePerLiter === null || totalCost === null) return null;
 
-  const drivenKm = parseOptionalNonNegativeNumber(value.drivenKm);
-  const safeDrivenKm = drivenKm !== null && drivenKm > 0 ? drivenKm : null;
-  const actualFuelPer100 = safeDrivenKm
-    ? Number(((fuelLiters / safeDrivenKm) * 100).toFixed(2))
-    : null;
-  const costPerKm = safeDrivenKm ? Number((totalCost / safeDrivenKm).toFixed(3)) : null;
-
   return {
     id: typeof value.id === 'string' && value.id ? value.id : uuidv4(),
     date: value.date,
+    fillType: parseFillType(value.fillType),
     fuelLiters,
     pricePerLiter,
     totalCost,
     fuelType: typeof value.fuelType === 'string' && value.fuelType.trim() ? value.fuelType.trim() : null,
-    drivenKm: safeDrivenKm,
-    actualFuelPer100,
-    costPerKm,
+    drivenKm: parseOptionalNonNegativeNumber(value.drivenKm),
+    actualFuelPer100: null,
+    costPerKm: null,
     dashboardOdo: parseOptionalNonNegativeNumber(value.dashboardOdo),
     dashboardAvgSpeed: parseOptionalNonNegativeNumber(value.dashboardAvgSpeed),
     dashboardDriveHours:
@@ -63,6 +61,45 @@ const normalizeRecord = (raw: unknown): FuelRecord | null => {
   };
 };
 
+const recalculateFuelCycles = (records: FuelRecord[]): FuelRecord[] => {
+  const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  return sorted.map((record, index) => {
+    if (record.fillType === 'partial') {
+      return { ...record, actualFuelPer100: null, costPerKm: null };
+    }
+
+    let previousFullIndex = -1;
+    for (let i = index - 1; i >= 0; i -= 1) {
+      if (sorted[i].fillType === 'full') {
+        previousFullIndex = i;
+        break;
+      }
+    }
+
+    const segment = previousFullIndex >= 0
+      ? sorted.slice(previousFullIndex + 1, index + 1)
+      : sorted.slice(0, index + 1);
+    const hasOpenPartialBeforeFirstFull = previousFullIndex < 0 && segment.slice(0, -1).some(item => item.fillType === 'partial');
+    if (hasOpenPartialBeforeFirstFull) {
+      return { ...record, actualFuelPer100: null, costPerKm: null };
+    }
+
+    const totalKm = segment.reduce((sum, item) => sum + (item.drivenKm ?? 0), 0);
+    if (totalKm <= 0) {
+      return { ...record, actualFuelPer100: null, costPerKm: null };
+    }
+
+    const totalLiters = segment.reduce((sum, item) => sum + item.fuelLiters, 0);
+    const totalCost = segment.reduce((sum, item) => sum + item.totalCost, 0);
+    return {
+      ...record,
+      actualFuelPer100: Number(((totalLiters / totalKm) * 100).toFixed(2)),
+      costPerKm: Number((totalCost / totalKm).toFixed(3)),
+    };
+  });
+};
+
 export const normalizeFuelRecords = (input: unknown): FuelRecord[] => {
   const rawRecords =
     Array.isArray(input)
@@ -71,10 +108,11 @@ export const normalizeFuelRecords = (input: unknown): FuelRecord[] => {
         ? (input as { records: unknown[] }).records
         : [];
 
-  return rawRecords
+  const records = rawRecords
     .map(normalizeRecord)
-    .filter((record): record is FuelRecord => record !== null)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    .filter((record): record is FuelRecord => record !== null);
+
+  return recalculateFuelCycles(records);
 };
 
 export const loadInitialData = (): FuelRecord[] => {

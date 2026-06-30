@@ -127,12 +127,17 @@ export function OverviewTab({ records, onRecordClick, onGoRecognize, onGoTrend, 
                 </div>
                 <div className="min-w-0 flex-1 text-left">
                   <div className="truncate text-sm font-semibold text-[#e8ecf4]">{r.fuelType || '加油记录'}</div>
-                  <div className="mt-0.5 text-[11px] text-[#6b7a99]">{r.date} · {r.fuelLiters} L</div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-[#6b7a99]">
+                    <span>{r.date} · {r.fuelLiters} L</span>
+                    <span className={cn('fill-type-pill', r.fillType === 'partial' && 'is-partial')}>
+                      {r.fillType === 'partial' ? '未加满' : '跳枪'}
+                    </span>
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-semibold text-[#e8ecf4]">¥{r.totalCost.toFixed(2)}</div>
                   <div className={cn(getFuelBadgeClass(r.actualFuelPer100), 'mt-1')}>
-                    {r.actualFuelPer100 !== null ? `${r.actualFuelPer100.toFixed(2)}` : '--'}
+                    {r.actualFuelPer100 !== null ? `${r.actualFuelPer100.toFixed(2)}` : r.fillType === 'partial' ? '待闭合' : '--'}
                   </div>
                 </div>
               </button>

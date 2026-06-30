@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FuelRecord } from '../types';
+import { FuelFillType, FuelRecord } from '../types';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { Camera, Image as ImageIcon, Loader2, AlertCircle, Upload, X } from 'lucide-react';
@@ -12,6 +12,7 @@ const formatFuelRecordNote = (record: FuelRecord) => [
   `加油量：${record.fuelLiters} L`,
   `单价：${record.pricePerLiter} 元/L`,
   `总价：${record.totalCost} 元`,
+  record.fillType === 'full' ? '加油方式：加满跳枪' : '加油方式：固定金额/未加满',
   record.fuelType ? `油号：${record.fuelType}` : '',
   record.drivenKm ? `行驶里程：${record.drivenKm} km` : '',
   record.actualFuelPer100 ? `实际油耗：${record.actualFuelPer100} L/100km` : '',
@@ -20,6 +21,12 @@ const formatFuelRecordNote = (record: FuelRecord) => [
   record.dashboardRange ? `剩余续航：${record.dashboardRange} km` : '',
 ].filter(Boolean).join('\n');
 
+const isLikelyFixedAmount = (value: string | number | null | undefined) => {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 100) return false;
+  const nearestHundred = Math.round(amount / 100) * 100;
+  return nearestHundred >= 100 && Math.abs(amount - nearestHundred) <= 2;
+};
 const shareFuelRecordNote = async (record: FuelRecord) => {
   if (!navigator.share) return;
   try {
@@ -54,6 +61,7 @@ export function AddRecordTab({
   const [pricePerLiter, setPricePerLiter] = useState('');
   const [totalCost, setTotalCost] = useState('');
   const [fuelType, setFuelType] = useState('');
+  const [fillType, setFillType] = useState<FuelFillType>('full');
   
   const [drivenKm, setDrivenKm] = useState('');
   const [dashboardOdo, setDashboardOdo] = useState('');
@@ -192,6 +200,7 @@ export function AddRecordTab({
     if (data.unitPrice) setPricePerLiter(data.unitPrice.toString());
     if (data.totalCost) setTotalCost(data.totalCost.toString());
     if (data.fuelType) setFuelType(data.fuelType.toString());
+    if (data.fillType === 'partial' || data.fillType === 'full') setFillType(data.fillType);
 
     if (data.drivenKm) setDrivenKm(data.drivenKm.toString());
     if (data.dashboardFuelPer100) setDashboardFuelPer100(data.dashboardFuelPer100.toString());
@@ -216,12 +225,14 @@ export function AddRecordTab({
     }
 
     const dKm = data.drivenKm ? Number(data.drivenKm) : null;
-    const actualFuelP100 = dKm && dKm > 0 ? Number(((liters / dKm) * 100).toFixed(2)) : null;
-    const costPKm = dKm && dKm > 0 ? Number((cost / dKm).toFixed(3)) : null;
+    const confirmedFillType: FuelFillType = data.fillType === 'partial' ? 'partial' : 'full';
+    const actualFuelP100 = confirmedFillType === 'full' && dKm && dKm > 0 ? Number(((liters / dKm) * 100).toFixed(2)) : null;
+    const costPKm = confirmedFillType === 'full' && dKm && dKm > 0 ? Number((cost / dKm).toFixed(3)) : null;
 
     const newRecord: FuelRecord = {
       id: uuidv4(),
       date: recordDate,
+      fillType: confirmedFillType,
       fuelLiters: liters,
       pricePerLiter: price,
       totalCost: Number(cost.toFixed(2)),
@@ -253,7 +264,7 @@ export function AddRecordTab({
   const actualFuelPreview = () => {
     const liters = parseFloat(fuelLiters);
     const km = parseFloat(drivenKm);
-    if (!isNaN(liters) && !isNaN(km) && km > 0) {
+    if (fillType === 'full' && !isNaN(liters) && !isNaN(km) && km > 0) {
       return (liters / km * 100).toFixed(2);
     }
     return null;
@@ -301,7 +312,7 @@ export function AddRecordTab({
     
     let actualFuelP100 = null;
     let costPKm = null;
-    if (dKm && dKm > 0) {
+    if (fillType === 'full' && dKm && dKm > 0) {
       actualFuelP100 = Number(((l / dKm) * 100).toFixed(2));
       costPKm = Number((tCost / dKm).toFixed(3));
     }
@@ -309,6 +320,7 @@ export function AddRecordTab({
     const newRecord: FuelRecord = {
       id: uuidv4(),
       date,
+      fillType,
       fuelLiters: l,
       pricePerLiter: price,
       totalCost: tCost,
@@ -549,6 +561,36 @@ export function AddRecordTab({
                 placeholder="例如: 汽92"
               />
             </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-[#6b7a99]">本次是否加满跳枪</label>
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-[#1a1a18] p-1 border border-white/10">
+              <button
+                type="button"
+                onClick={() => setFillType('full')}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${fillType === 'full' ? 'bg-[#f5a623] text-black' : 'text-[#6b7a99]'}`}
+              >
+                加满跳枪
+              </button>
+              <button
+                type="button"
+                onClick={() => setFillType('partial')}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${fillType === 'partial' ? 'bg-[#4fc3f7] text-black' : 'text-[#6b7a99]'}`}
+              >
+                固定金额/未加满
+              </button>
+            </div>
+            {isLikelyFixedAmount(totalCost) && (
+              <p className="rounded-lg border border-[#f5a623]/20 bg-[#f5a623]/10 px-3 py-2 text-[11px] leading-relaxed text-[#f5a623]">
+                金额接近整百，可能是固定金额加油。请确认本次是否真的加满跳枪。
+              </p>
+            )}
+            {fillType === 'partial' && (
+              <p className="rounded-lg border border-white/10 bg-[#0d0f14] px-3 py-2 text-[11px] leading-relaxed text-[#6b7a99]">
+                未加满记录会计入费用和加油量，不单独计算实际油耗；下一次加满后会合并中间记录计算区间油耗。
+              </p>
+            )}
           </div>
         </div>
 
