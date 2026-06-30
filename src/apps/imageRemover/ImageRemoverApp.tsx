@@ -102,24 +102,27 @@ export default function ImageRemoverApp({ onBackToToolbox }: ImageRemoverAppProp
   }, []);
 
   const runCloud = useCallback(async (file: File) => {
-    const apiKey = import.meta.env.VITE_REMOVE_BG_KEY;
-    if (!apiKey) throw new Error('云端模式未配置 remove.bg API Key，请切换到本地模式。');
     setProgress(15);
 
     const formData = new FormData();
     formData.append('image_file', file);
     formData.append('size', 'auto');
 
-    const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+    const response = await fetch('/api/image/remove-bg', {
       method: 'POST',
-      headers: { 'X-Api-Key': apiKey },
       body: formData,
     });
     setProgress(75);
 
     if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`remove.bg 返回 ${response.status}：${detail}`);
+      let detail = response.statusText;
+      try {
+        const data = await response.json() as { error?: string };
+        detail = data.error || detail;
+      } catch {
+        detail = await response.text();
+      }
+      throw new Error(detail || `云端抠图返回 ${response.status}`);
     }
 
     return response.blob();
@@ -129,7 +132,7 @@ export default function ImageRemoverApp({ onBackToToolbox }: ImageRemoverAppProp
     if (!activeImage || state === 'processing') return;
     setState('processing');
     setProgress(5);
-    setMessage(mode === 'local' ? '首次本地处理会下载模型资源，之后由浏览器缓存。' : '正在调用 remove.bg 云端接口。');
+    setMessage(mode === 'local' ? '首次本地处理会下载模型资源，之后由浏览器缓存。' : '正在通过三秋工具箱 Worker 调用 remove.bg。');
 
     try {
       if (resultUrl) URL.revokeObjectURL(resultUrl);

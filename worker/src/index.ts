@@ -13,6 +13,7 @@ interface Env {
   BAILIAN_VOICE_MAMA?: string;
   BAILIAN_VOICE_MAP?: string;
   CORS_ALLOWED_ORIGIN?: string;
+  REMOVE_BG_API_KEY?: string;
 }
 
 type JsonBody = Record<string, unknown>;
@@ -21,6 +22,7 @@ type StoryProvider = 'dashscope' | 'deepseek';
 const QWEN_TTS_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
 const DASHSCOPE_CHAT_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 const DEEPSEEK_CHAT_URL = 'https://api.deepseek.com/chat/completions';
+const REMOVE_BG_URL = 'https://api.remove.bg/v1.0/removebg';
 const DEFAULT_TTS_MODEL = 'qwen3-tts-vc-2026-01-22';
 const DEFAULT_DASHSCOPE_STORY_MODEL = 'qwen-plus-2025-07-28';
 const DEFAULT_DEEPSEEK_STORY_MODEL = 'deepseek-chat';
@@ -197,6 +199,47 @@ const readVoiceMap = (env: Env) => {
   return map;
 };
 
+async function removeImageBackground(request: Request, env: Env) {
+  if (!env.REMOVE_BG_API_KEY) {
+    return json(request, env, { error: 'Worker 未配置 REMOVE_BG_API_KEY' }, 500);
+  }
+
+  let body: FormData;
+  try {
+    body = await request.formData();
+  } catch {
+    return json(request, env, { error: '请求体必须是 multipart/form-data' }, 400);
+  }
+
+  const image = body.get('image_file');
+  if (!(image instanceof Blob)) {
+    return json(request, env, { error: '缺少 image_file 图片文件' }, 400);
+  }
+
+  const formData = new FormData();
+  formData.append('image_file', image, image instanceof File ? image.name : 'image.png');
+  formData.append('size', String(body.get('size') || 'auto'));
+
+  const response = await fetch(REMOVE_BG_URL, {
+    method: 'POST',
+    headers: { 'X-Api-Key': env.REMOVE_BG_API_KEY },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const message = await readProviderError(response);
+    return json(request, env, { error: `remove.bg 处理失败：${message}` }, response.status);
+  }
+
+  return new Response(response.body, {
+    status: 200,
+    headers: {
+      ...corsHeaders(request, env),
+      'Content-Type': response.headers.get('Content-Type') || 'image/png',
+      'Cache-Control': 'no-store',
+    },
+  });
+}
 async function synthesize(request: Request, env: Env) {
   if (!env.DASHSCOPE_API_KEY) {
     return json(request, env, { error: 'Worker 未配置百炼 API Key' }, 500);
@@ -276,7 +319,7 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === 'GET' && url.pathname === '/health') {
-      return json(request, env, { ok: true, service: 'baby-story-worker', story: 'chat-completions', tts: 'qwen-tts-vc' });
+      return json(request, env, { ok: true, service: 'sanqiu-toolbox-api', story: 'chat-completions', tts: 'qwen-tts-vc', image: 'remove.bg' });
     }
 
     if (request.method === 'POST' && url.pathname === '/api/story/generate') {
@@ -285,6 +328,10 @@ export default {
 
     if (request.method === 'POST' && url.pathname === '/api/tts/synthesize') {
       return synthesize(request, env);
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/image/remove-bg') {
+      return removeImageBackground(request, env);
     }
 
     return json(request, env, { error: 'Not found' }, 404);
