@@ -58,10 +58,17 @@ const toNumberOrNull = (value: string) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const getInferredUnitPrice = (data: any) => {
+  const liters = Number(data.fuelLiters);
+  const cost = Number(data.totalCost);
+  if (!Number.isFinite(liters) || liters <= 0 || !Number.isFinite(cost) || cost <= 0) return '';
+  return String(Number((cost / liters).toFixed(2)));
+};
+
 const getInitialFields = (data: any): OcrEditableFields => ({
   date: valueToString(data.date),
   fuelLiters: valueToString(data.fuelLiters),
-  unitPrice: valueToString(data.unitPrice),
+  unitPrice: valueToString(data.unitPrice) || getInferredUnitPrice(data),
   totalCost: valueToString(data.totalCost),
   fuelType: normalizeFuelType(data.fuelType) || '92#',
   drivenKm: valueToString(data.drivenKm),
@@ -157,10 +164,8 @@ export function OcrConfirmModal({ data, confidence, onConfirm, onCancel, onAddMo
   const editedData = useMemo(() => buildEditedData(data, fields), [data, fields]);
   const report = generateOcrPreviewReport(editedData);
   const fixedAmountHint = isLikelyFixedAmount(editedData.totalCost);
-  const inferredUnitPrice = editedData.fuelLiters && editedData.totalCost
-    ? Number((editedData.totalCost / editedData.fuelLiters).toFixed(2))
-    : null;
-  const canInferUnitPrice = !fields.unitPrice.trim() && inferredUnitPrice && Number.isFinite(inferredUnitPrice);
+  const inferredUnitPrice = getInferredUnitPrice(data);
+  const unitPriceWasInferred = !valueToString(data.unitPrice).trim() && fields.unitPrice === inferredUnitPrice;
   const hasReceiptRequiredMissing = !fields.date.trim() || !fields.fuelLiters.trim() || !fields.unitPrice.trim() || !fields.totalCost.trim();
   const fuelTypeWasDefaulted = !normalizeFuelType(data.fuelType);
   const crossCheckOk = editedData.fuelLiters && editedData.unitPrice && editedData.totalCost
@@ -251,17 +256,13 @@ export function OcrConfirmModal({ data, confidence, onConfirm, onCancel, onAddMo
               inputMode="decimal"
               suffix="元/L"
               placeholder="6.75"
-              requiredReview={!fields.unitPrice.trim() || confidence.unitPrice !== 'high'}
+              requiredReview={unitPriceWasInferred || !fields.unitPrice.trim() || confidence.unitPrice !== 'high'}
             />
-            {canInferUnitPrice && (
-              <button
-                type="button"
-                className="ocr-infer-button"
-                onClick={() => updateField('unitPrice', String(inferredUnitPrice))}
-              >
+            {unitPriceWasInferred && (
+              <div className="ocr-infer-note">
                 <Calculator size={14} />
-                <span>按总价和加油量补单价：{inferredUnitPrice} 元/L</span>
-              </button>
+                <span>单价未识别，已按总价 ÷ 加油量推算为 {fields.unitPrice} 元/L，请保存前确认。</span>
+              </div>
             )}
 
             <EditableOcrRow
