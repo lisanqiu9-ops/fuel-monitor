@@ -6,6 +6,7 @@ import { Camera, Image as ImageIcon, Loader2, AlertCircle, Upload, X } from 'luc
 import { AnimatePresence, motion } from 'motion/react';
 import { checkOcrConfig, compressImage, callBaiduOCR, parseOCRData } from '../lib/ocr';
 import { OcrConfirmModal } from './OcrConfirmModal';
+import { normalizeFuelType } from '../data';
 
 const formatFuelRecordNote = (record: FuelRecord) => [
   `加油记录 ${record.date}`,
@@ -20,6 +21,8 @@ const formatFuelRecordNote = (record: FuelRecord) => [
   record.dashboardOdo ? `总里程：${record.dashboardOdo} km` : '',
   record.dashboardRange ? `剩余续航：${record.dashboardRange} km` : '',
 ].filter(Boolean).join('\n');
+
+const fuelTypeOptions = ['92#', '95#', '98#'];
 
 const isLikelyFixedAmount = (value: string | number | null | undefined) => {
   const amount = Number(value);
@@ -60,7 +63,7 @@ export function AddRecordTab({
   const [fuelLiters, setFuelLiters] = useState('');
   const [pricePerLiter, setPricePerLiter] = useState('');
   const [totalCost, setTotalCost] = useState('');
-  const [fuelType, setFuelType] = useState('');
+  const [fuelType, setFuelType] = useState('92#');
   const [fillType, setFillType] = useState<FuelFillType>('full');
   
   const [drivenKm, setDrivenKm] = useState('');
@@ -199,7 +202,7 @@ export function AddRecordTab({
     if (data.fuelLiters) setFuelLiters(data.fuelLiters.toString());
     if (data.unitPrice) setPricePerLiter(data.unitPrice.toString());
     if (data.totalCost) setTotalCost(data.totalCost.toString());
-    if (data.fuelType) setFuelType(data.fuelType.toString());
+    if (data.fuelType) setFuelType(normalizeFuelType(data.fuelType) || '92#');
     if (data.fillType === 'partial' || data.fillType === 'full') setFillType(data.fillType);
 
     if (data.drivenKm) setDrivenKm(data.drivenKm.toString());
@@ -239,7 +242,7 @@ export function AddRecordTab({
       drivenKm: dKm,
       actualFuelPer100: actualFuelP100,
       costPerKm: costPKm,
-      fuelType: data.fuelType || null,
+      fuelType: normalizeFuelType(data.fuelType) || '92#',
       dashboardOdo: data.dashboardOdo ? Number(data.dashboardOdo) : null,
       dashboardAvgSpeed: data.dashboardAvgSpeed ? Number(data.dashboardAvgSpeed) : null,
       dashboardDriveHours: data.dashboardDriveHours ? String(data.dashboardDriveHours) : null,
@@ -327,7 +330,7 @@ export function AddRecordTab({
       drivenKm: dKm,
       actualFuelPer100: actualFuelP100,
       costPerKm: costPKm,
-      fuelType: fuelType || null,
+      fuelType: normalizeFuelType(fuelType) || '92#',
       dashboardOdo: odo,
       dashboardAvgSpeed: avgSpeed,
       dashboardDriveHours: dashboardDriveHours || null,
@@ -556,10 +559,18 @@ export function AddRecordTab({
             </div>
             <div className="flex flex-col flex-1">
               <label className="text-xs text-[#6b7a99] mb-1">油号</label>
-              <input type="text" value={fuelType} onChange={e => setFuelType(e.target.value)}
-                className="bg-[#1a1a18] border border-white/10 rounded px-3 py-2 text-[#e8ecf4] focus:border-[#f5a623] focus:outline-none w-full"
-                placeholder="例如: 汽92"
-              />
+              <div className="grid grid-cols-3 gap-1 rounded bg-[#1a1a18] p-1 border border-white/10">
+                {fuelTypeOptions.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setFuelType(option)}
+                    className={`rounded px-2 py-2 text-xs font-semibold transition-colors ${fuelType === option ? 'bg-[#f5a623] text-black' : 'text-[#6b7a99]'}`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

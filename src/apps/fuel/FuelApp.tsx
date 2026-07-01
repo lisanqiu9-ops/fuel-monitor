@@ -46,7 +46,7 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
   const [ocrPrefillData, setOcrPrefillData] = useState<any>(null);
 
   useEffect(() => {
-    setRecords(loadInitialData());
+    setRecords(saveRecords(loadInitialData()));
     const savedTheme = localStorage.getItem('fuel_monitor_theme') as ThemeId | null;
     if (savedTheme && themeOptions.some(option => option.id === savedTheme)) {
       setTheme(savedTheme);

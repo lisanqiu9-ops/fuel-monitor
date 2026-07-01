@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { Check, AlertTriangle, ChevronLeft, Plus, Loader2, ClipboardList, PencilLine, Calculator } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { generateOcrPreviewReport } from '../lib/report';
+import { normalizeFuelType } from '../data';
 import type { FuelFillType } from '../types';
 
 const isLikelyFixedAmount = (value: unknown) => {
@@ -42,14 +43,6 @@ const valueToString = (value: unknown) => {
   return String(value);
 };
 
-const normalizeFuelType = (value: unknown) => {
-  const text = valueToString(value).trim();
-  if (!text) return '';
-  if (/98/.test(text)) return '98#';
-  if (/95/.test(text)) return '95#';
-  if (/92/.test(text)) return '92#';
-  return '';
-};
 
 const toNumberOrNull = (value: string) => {
   const trimmed = value.trim();
@@ -85,7 +78,7 @@ const buildEditedData = (data: any, fields: OcrEditableFields) => ({
   fuelLiters: toNumberOrNull(fields.fuelLiters),
   unitPrice: toNumberOrNull(fields.unitPrice),
   totalCost: toNumberOrNull(fields.totalCost),
-  fuelType: normalizeFuelType(fields.fuelType) || fields.fuelType.trim() || null,
+  fuelType: normalizeFuelType(fields.fuelType),
   drivenKm: toNumberOrNull(fields.drivenKm),
   dashboardAvgSpeed: toNumberOrNull(fields.dashboardAvgSpeed),
   dashboardFuelPer100: toNumberOrNull(fields.dashboardFuelPer100),

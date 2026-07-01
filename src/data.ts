@@ -3,6 +3,17 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'fuellog_records';
 
+export const normalizeFuelType = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  if (/98/.test(text)) return '98#';
+  if (/95/.test(text)) return '95#';
+  if (/92/.test(text)) return '92#';
+  if (/0\s*#?|柴油|柴/.test(text)) return '0#';
+  return text;
+};
+
 const parseOptionalNumber = (value: unknown): number | null => {
   if (value === null || value === undefined || value === '') return null;
   const num = Number(value);
@@ -46,7 +57,7 @@ const normalizeRecord = (raw: unknown): FuelRecord | null => {
     fuelLiters,
     pricePerLiter,
     totalCost,
-    fuelType: typeof value.fuelType === 'string' && value.fuelType.trim() ? value.fuelType.trim() : null,
+    fuelType: normalizeFuelType(value.fuelType),
     drivenKm: parseOptionalNonNegativeNumber(value.drivenKm),
     actualFuelPer100: null,
     costPerKm: null,

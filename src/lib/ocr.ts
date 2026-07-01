@@ -1,12 +1,5 @@
 import { format } from 'date-fns';
-
-const normalizeFuelType = (value: unknown) => {
-  const text = value === null || value === undefined ? '' : String(value);
-  if (/98/.test(text)) return '98#';
-  if (/95/.test(text)) return '95#';
-  if (/92/.test(text)) return '92#';
-  return null;
-};
+import { normalizeFuelType } from '../data';
 
 export async function compressImage(file: File, maxWidth = 1600, quality = 0.85): Promise<string> {
   return new Promise((resolve, reject) => {
