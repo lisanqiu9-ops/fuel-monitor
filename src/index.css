@@ -726,12 +726,42 @@ body {
   padding: 16px;
 }
 
+.ocr-edit-hint {
+  margin: -2px 0 10px;
+  border-radius: 14px;
+  background: rgba(197, 139, 49, 0.1);
+  padding: 10px 12px;
+  box-shadow:
+    0 0 0 1px rgba(197, 139, 49, 0.12),
+    0 1px 2px rgba(42, 39, 35, 0.04);
+}
+
+.ocr-edit-hint span {
+  display: block;
+  color: #9a6a20;
+  font-size: 12px;
+  font-weight: 900;
+  text-wrap: balance;
+}
+
+.ocr-edit-hint p {
+  margin-top: 2px;
+  color: #7b6a52;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
 .ocr-result-row {
-  min-height: 35px;
+  min-height: 44px;
   display: grid;
-  grid-template-columns: minmax(72px, 0.72fr) minmax(0, 1fr) 22px;
+  grid-template-columns: minmax(66px, 0.58fr) minmax(0, 1fr) 40px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  border-radius: 12px;
+  margin: 1px -4px;
+  padding: 3px 4px;
 }
 
 .ocr-result-row span {
@@ -747,10 +777,117 @@ body {
   text-align: right;
   font-size: 15px;
   font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
 .ocr-result-row strong.is-price {
   color: #c58b31;
+}
+
+.ocr-result-row.needs-review {
+  background: rgba(197, 139, 49, 0.075);
+}
+
+.ocr-result-row.is-editing {
+  grid-template-columns: minmax(58px, 0.48fr) minmax(0, 1fr) 40px;
+}
+
+.ocr-inline-editor {
+  min-width: 0;
+  min-height: 40px;
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  background: rgba(255, 253, 249, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(25, 24, 23, 0.09),
+    0 1px 2px rgba(42, 39, 35, 0.04);
+}
+
+.ocr-inline-editor input {
+  min-width: 0;
+  width: 100%;
+  height: 40px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 0 8px 0 10px;
+  color: #191817;
+  text-align: right;
+  font-size: 15px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.ocr-inline-editor input::placeholder {
+  color: #b8b0a2;
+}
+
+.ocr-inline-editor input:focus {
+  box-shadow: inset 0 -2px 0 rgba(197, 139, 49, 0.56);
+}
+
+.ocr-inline-editor em {
+  padding-right: 10px;
+  color: #8d8981;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ocr-row-edit-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8d8981;
+  background: rgba(255, 253, 249, 0.62);
+  box-shadow: 0 0 0 1px rgba(25, 24, 23, 0.06);
+  transition-property: scale, background-color, color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+.ocr-row-edit-button:active {
+  scale: 0.96;
+}
+
+.ocr-row-edit-button.is-active,
+.ocr-result-row.needs-review .ocr-row-edit-button {
+  color: #9a6a20;
+  background: rgba(197, 139, 49, 0.14);
+  box-shadow: 0 0 0 1px rgba(197, 139, 49, 0.18);
+}
+
+.ocr-infer-button {
+  min-height: 42px;
+  width: 100%;
+  margin: 2px 0 6px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: rgba(21, 128, 61, 0.1);
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.25;
+  box-shadow:
+    0 0 0 1px rgba(21, 128, 61, 0.12),
+    0 1px 2px rgba(42, 39, 35, 0.04);
+  transition-property: scale, background-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+.ocr-infer-button:active {
+  scale: 0.96;
+  background: rgba(21, 128, 61, 0.16);
 }
 
 .ocr-result-divider {
@@ -820,11 +957,24 @@ body {
   background: #1f1e1b;
   color: #fffdf9;
   box-shadow: 0 12px 24px rgba(31, 30, 27, 0.14);
+  transition-property: scale, background-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .ocr-confirm-footer button:active {
-  transform: scale(0.99);
+  scale: 0.96;
   background: #34312d;
+}
+
+.ocr-confirm-footer-warning {
+  margin-bottom: 10px;
+  color: #9a6a20;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-wrap: pretty;
 }
 
 .record-detail-page {
