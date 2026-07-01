@@ -60,6 +60,8 @@ export function HistoryModal({ records, onClose, onDelete, onRecordClick }: Prop
                         <span>{format(parseISO(record.date), 'yyyy-MM-dd')}</span>
                         <span>·</span>
                         <span>{record.fuelLiters} L</span>
+                        <span>·</span>
+                        <span>¥{record.pricePerLiter.toFixed(2)}/L</span>
                         <span className={cn('fill-type-pill', record.fillType === 'partial' && 'is-partial')}>
                           {record.fillType === 'partial' ? '未加满' : '跳枪'}
                         </span>

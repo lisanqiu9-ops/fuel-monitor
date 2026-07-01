@@ -128,7 +128,7 @@ export function OverviewTab({ records, onRecordClick, onGoRecognize, onGoTrend, 
                 <div className="min-w-0 flex-1 text-left">
                   <div className="truncate text-sm font-semibold text-[#e8ecf4]">{r.fuelType || '加油记录'}</div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-[#6b7a99]">
-                    <span>{r.date} · {r.fuelLiters} L</span>
+                    <span>{r.date} · {r.fuelLiters} L · ¥{r.pricePerLiter.toFixed(2)}/L</span>
                     <span className={cn('fill-type-pill', r.fillType === 'partial' && 'is-partial')}>
                       {r.fillType === 'partial' ? '未加满' : '跳枪'}
                     </span>
