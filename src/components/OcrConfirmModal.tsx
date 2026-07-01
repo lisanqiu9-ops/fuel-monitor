@@ -35,9 +35,20 @@ type OcrEditableFields = {
   dashboardOdo: string;
 };
 
+const fuelTypeOptions = ['92#', '95#', '98#'];
+
 const valueToString = (value: unknown) => {
   if (value === null || value === undefined) return '';
   return String(value);
+};
+
+const normalizeFuelType = (value: unknown) => {
+  const text = valueToString(value).trim();
+  if (!text) return '';
+  if (/98/.test(text)) return '98#';
+  if (/95/.test(text)) return '95#';
+  if (/92/.test(text)) return '92#';
+  return '';
 };
 
 const toNumberOrNull = (value: string) => {
@@ -52,7 +63,7 @@ const getInitialFields = (data: any): OcrEditableFields => ({
   fuelLiters: valueToString(data.fuelLiters),
   unitPrice: valueToString(data.unitPrice),
   totalCost: valueToString(data.totalCost),
-  fuelType: valueToString(data.fuelType),
+  fuelType: normalizeFuelType(data.fuelType) || '92#',
   drivenKm: valueToString(data.drivenKm),
   dashboardAvgSpeed: valueToString(data.dashboardAvgSpeed),
   dashboardFuelPer100: valueToString(data.dashboardFuelPer100),
@@ -67,7 +78,7 @@ const buildEditedData = (data: any, fields: OcrEditableFields) => ({
   fuelLiters: toNumberOrNull(fields.fuelLiters),
   unitPrice: toNumberOrNull(fields.unitPrice),
   totalCost: toNumberOrNull(fields.totalCost),
-  fuelType: fields.fuelType.trim() || null,
+  fuelType: normalizeFuelType(fields.fuelType) || fields.fuelType.trim() || null,
   drivenKm: toNumberOrNull(fields.drivenKm),
   dashboardAvgSpeed: toNumberOrNull(fields.dashboardAvgSpeed),
   dashboardFuelPer100: toNumberOrNull(fields.dashboardFuelPer100),
@@ -151,6 +162,7 @@ export function OcrConfirmModal({ data, confidence, onConfirm, onCancel, onAddMo
     : null;
   const canInferUnitPrice = !fields.unitPrice.trim() && inferredUnitPrice && Number.isFinite(inferredUnitPrice);
   const hasReceiptRequiredMissing = !fields.date.trim() || !fields.fuelLiters.trim() || !fields.unitPrice.trim() || !fields.totalCost.trim();
+  const fuelTypeWasDefaulted = !normalizeFuelType(data.fuelType);
   const crossCheckOk = editedData.fuelLiters && editedData.unitPrice && editedData.totalCost
     ? Math.abs(editedData.fuelLiters * editedData.unitPrice - editedData.totalCost) <= Math.max(0.5, editedData.totalCost * 0.01)
     : null;
@@ -203,7 +215,7 @@ export function OcrConfirmModal({ data, confidence, onConfirm, onCancel, onAddMo
           <div className="ocr-result-card">
             <div className="ocr-edit-hint">
               <span>识别值可直接修改</span>
-              <p>黄色或未识别字段会自动展开，请按小票补齐后再入库。</p>
+              <p>黄色或未识别字段会自动展开；油号识别不到时按常用 92# 预选。</p>
             </div>
 
             <EditableOcrRow
@@ -266,15 +278,25 @@ export function OcrConfirmModal({ data, confidence, onConfirm, onCancel, onAddMo
               requiredReview={!fields.totalCost.trim() || confidence.totalCost !== 'high'}
             />
 
-            <EditableOcrRow
-              label="油号"
-              value={fields.fuelType}
-              displayValue={fields.fuelType || '未识别'}
-              status={confidence.fuelType}
-              onChange={value => updateField('fuelType', value)}
-              placeholder="例如：汽92"
-              requiredReview={!fields.fuelType.trim() || confidence.fuelType !== 'high'}
-            />
+            <div className={cn('ocr-result-row fuel-type-row', fuelTypeWasDefaulted && 'needs-review')}>
+              <span>油号</span>
+              <div className="ocr-fuel-type-segment" role="group" aria-label="选择油号">
+                {fuelTypeOptions.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => updateField('fuelType', option)}
+                    className={fields.fuelType === option ? 'is-active' : ''}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+              <Check size={16} className={fields.fuelType ? 'text-green-500' : 'text-[#8d8981]'} />
+            </div>
+            {fuelTypeWasDefaulted && (
+              <p className="ocr-fuel-type-note">未识别到油号，已按常用 92# 预选，请保存前确认。</p>
+            )}
 
             <div className="ocr-result-divider" />
 

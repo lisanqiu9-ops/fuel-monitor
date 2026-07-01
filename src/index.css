@@ -890,6 +890,57 @@ body {
   background: rgba(21, 128, 61, 0.16);
 }
 
+.fuel-type-row {
+  grid-template-columns: minmax(58px, 0.48fr) minmax(0, 1fr) 22px;
+}
+
+.ocr-fuel-type-segment {
+  min-width: 0;
+  min-height: 40px;
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  background: rgba(255, 253, 249, 0.82);
+  padding: 3px;
+  box-shadow:
+    0 0 0 1px rgba(25, 24, 23, 0.08),
+    0 1px 2px rgba(42, 39, 35, 0.04);
+}
+
+.ocr-fuel-type-segment button {
+  min-width: 0;
+  min-height: 34px;
+  border-radius: 8px;
+  color: #7b6a52;
+  font-size: 12px;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+  transition-property: scale, background-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+.ocr-fuel-type-segment button:active {
+  scale: 0.96;
+}
+
+.ocr-fuel-type-segment button.is-active {
+  background: #c58b31;
+  color: #fffdf9;
+}
+
+.ocr-fuel-type-note {
+  margin: 2px 0 8px 70px;
+  border-radius: 10px;
+  background: rgba(197, 139, 49, 0.1);
+  padding: 8px 10px;
+  color: #9a6a20;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
 .ocr-result-divider {
   height: 1px;
   margin: 10px 0 9px;
