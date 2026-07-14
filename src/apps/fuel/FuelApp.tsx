@@ -303,18 +303,18 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
           <span className="text-[11px] mt-0.5 font-medium">概览</span>
         </button>
         <button 
-          onClick={() => setActiveTab('add')}
-          className={cn("app-nav-item relative m-1 flex min-h-14 flex-col items-center justify-start rounded-2xl transition-colors", activeTab === 'add' ? 'bg-[#f5a623]/10 text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
-        >
-          <PlusCircle size={23} />
-          <span className="text-[11px] mt-0.5 font-medium">记录</span>
-        </button>
-        <button
           onClick={() => setActiveTab('analysis')}
           className={cn("app-nav-item relative m-1 flex min-h-14 flex-col items-center justify-start rounded-2xl transition-colors", activeTab === 'analysis' ? 'bg-[#f5a623]/10 text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
         >
           <BarChart2 size={23} />
           <span className="text-[11px] mt-0.5 font-medium">分析</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('add')}
+          className={cn("app-nav-item relative m-1 flex min-h-14 flex-col items-center justify-start rounded-2xl transition-colors", activeTab === 'add' ? 'bg-[#f5a623]/10 text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
+        >
+          <PlusCircle size={23} />
+          <span className="text-[11px] mt-0.5 font-medium">记录</span>
         </button>
         <button 
           onClick={() => setActiveTab('settings')}
