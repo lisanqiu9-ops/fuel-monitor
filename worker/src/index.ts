@@ -1,3 +1,18 @@
+interface R2ObjectBody {
+  body: ReadableStream;
+  httpMetadata?: { contentType?: string };
+  httpEtag: string;
+  customMetadata?: Record<string, string>;
+}
+
+interface R2Bucket {
+  get(key: string): Promise<R2ObjectBody | null>;
+  put(key: string, value: string, options?: {
+    httpMetadata?: { contentType?: string };
+    customMetadata?: Record<string, string>;
+  }): Promise<unknown>;
+}
+
 interface Env {
   DASHSCOPE_API_KEY: string;
   DEEPSEEK_API_KEY?: string;
@@ -14,6 +29,10 @@ interface Env {
   BAILIAN_VOICE_MAP?: string;
   CORS_ALLOWED_ORIGIN?: string;
   REMOVE_BG_API_KEY?: string;
+  BAIDU_API_KEY?: string;
+  BAIDU_SECRET_KEY?: string;
+  FUEL_ACCESS_KEY?: string;
+  FUEL_BUCKET?: R2Bucket;
 }
 
 type JsonBody = Record<string, unknown>;
@@ -26,16 +45,27 @@ const REMOVE_BG_URL = 'https://api.remove.bg/v1.0/removebg';
 const DEFAULT_TTS_MODEL = 'qwen3-tts-vc-2026-01-22';
 const DEFAULT_DASHSCOPE_STORY_MODEL = 'qwen-plus-2025-07-28';
 const DEFAULT_DEEPSEEK_STORY_MODEL = 'deepseek-chat';
+const BAIDU_TOKEN_URL = 'https://aip.baidubce.com/oauth/2.0/token';
+const BAIDU_OCR_URL = 'https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic';
+const FUEL_RECORDS_FILE = 'fuel-records.json';
+const MAX_FUEL_JSON_BYTES = 2 * 1024 * 1024;
+const MAX_OCR_IMAGE_BYTES = 8 * 1024 * 1024;
+
+let cachedBaiduToken = '';
+let cachedBaiduTokenExpiresAt = 0;
 
 const corsHeaders = (request: Request, env: Env) => {
   const requestOrigin = request.headers.get('Origin') || '';
-  const allowedOrigin = env.CORS_ALLOWED_ORIGIN || requestOrigin || '*';
-  const origin = allowedOrigin === '*' || allowedOrigin === requestOrigin ? allowedOrigin : 'null';
+  const allowedOrigins = (env.CORS_ALLOWED_ORIGIN || requestOrigin || '*')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean);
+  const origin = allowedOrigins.includes('*') || allowedOrigins.includes(requestOrigin) ? requestOrigin || '*' : 'null';
 
   return {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization,Content-Type',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
@@ -240,6 +270,168 @@ async function removeImageBackground(request: Request, env: Env) {
     },
   });
 }
+
+const hasFuelAccess = (request: Request, env: Env) => (
+  Boolean(env.FUEL_ACCESS_KEY)
+  && request.headers.get('Authorization') === `Bearer ${env.FUEL_ACCESS_KEY}`
+);
+
+const isOptionalNonNegativeNumber = (value: unknown) => (
+  value === null || value === undefined || (typeof value === 'number' && Number.isFinite(value) && value >= 0)
+);
+
+const isFuelRecord = (value: unknown) => {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.id === 'string'
+    && Boolean(record.id.trim())
+    && typeof record.date === 'string'
+    && /^\d{4}-\d{2}-\d{2}$/.test(record.date)
+    && (record.fillType === 'full' || record.fillType === 'partial')
+    && typeof record.fuelLiters === 'number'
+    && Number.isFinite(record.fuelLiters)
+    && record.fuelLiters > 0
+    && typeof record.pricePerLiter === 'number'
+    && Number.isFinite(record.pricePerLiter)
+    && record.pricePerLiter > 0
+    && typeof record.totalCost === 'number'
+    && Number.isFinite(record.totalCost)
+    && record.totalCost > 0
+    && isOptionalNonNegativeNumber(record.drivenKm)
+    && isOptionalNonNegativeNumber(record.actualFuelPer100)
+    && isOptionalNonNegativeNumber(record.costPerKm)
+    && isOptionalNonNegativeNumber(record.dashboardOdo)
+    && isOptionalNonNegativeNumber(record.dashboardAvgSpeed)
+    && isOptionalNonNegativeNumber(record.dashboardFuelPer100)
+    && isOptionalNonNegativeNumber(record.dashboardRange);
+};
+
+const readFuelRecords = async (request: Request, env: Env) => {
+  if (!hasFuelAccess(request, env)) return json(request, env, { error: '油耗访问密钥无效' }, 401);
+  if (!env.FUEL_BUCKET) return json(request, env, { error: 'Worker 未绑定 FUEL_BUCKET' }, 500);
+
+  try {
+    const object = await env.FUEL_BUCKET.get(FUEL_RECORDS_FILE);
+    if (!object) return json(request, env, { error: '云端油耗记录尚未创建' }, 404);
+    return new Response(object.body, {
+      status: 200,
+      headers: {
+        ...corsHeaders(request, env),
+        'Content-Type': object.httpMetadata?.contentType || 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        ETag: object.httpEtag,
+        'X-Fuel-Synced-At': object.customMetadata?.syncedAt || '',
+      },
+    });
+  } catch (error) {
+    console.error('Failed to read fuel records from R2', error);
+    return json(request, env, { error: '云端油耗记录读取失败' }, 500);
+  }
+};
+
+const writeFuelRecords = async (request: Request, env: Env) => {
+  if (!hasFuelAccess(request, env)) return json(request, env, { error: '油耗访问密钥无效' }, 401);
+  if (!env.FUEL_BUCKET) return json(request, env, { error: 'Worker 未绑定 FUEL_BUCKET' }, 500);
+
+  let raw: string;
+  try {
+    raw = await request.text();
+  } catch (error) {
+    console.error('Failed to read fuel records request body', error);
+    return json(request, env, { error: '无法读取油耗记录请求体' }, 400);
+  }
+  if (new TextEncoder().encode(raw).byteLength > MAX_FUEL_JSON_BYTES) {
+    return json(request, env, { error: '油耗记录超过 2MB 限制' }, 413);
+  }
+
+  let data: Record<string, unknown>;
+  try {
+    data = JSON.parse(raw) as Record<string, unknown>;
+  } catch (error) {
+    console.error('Failed to parse fuel records JSON', error);
+    return json(request, env, { error: '油耗记录必须是有效 JSON' }, 400);
+  }
+
+  const records = data.records;
+  if (!Array.isArray(records) || records.length > 10000 || !records.every(isFuelRecord)) {
+    return json(request, env, { error: '油耗记录数据结构无效' }, 400);
+  }
+
+  const syncedAt = new Date().toISOString();
+  const payload = JSON.stringify({ app: 'fuel-consumption-monitor', version: 1, syncedAt, records });
+  try {
+    await env.FUEL_BUCKET.put(FUEL_RECORDS_FILE, payload, {
+      httpMetadata: { contentType: 'application/json; charset=utf-8' },
+      customMetadata: { syncedAt },
+    });
+  } catch (error) {
+    console.error('Failed to write fuel records to R2', error);
+    return json(request, env, { error: '云端油耗记录写入失败' }, 500);
+  }
+  return json(request, env, { ok: true, count: records.length, syncedAt });
+};
+
+const getBaiduOcrToken = async (env: Env) => {
+  if (cachedBaiduToken && Date.now() < cachedBaiduTokenExpiresAt) return cachedBaiduToken;
+  if (!env.BAIDU_API_KEY || !env.BAIDU_SECRET_KEY) throw new Error('Worker 未配置百度 OCR 密钥');
+
+  const response = await fetch(BAIDU_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: env.BAIDU_API_KEY,
+      client_secret: env.BAIDU_SECRET_KEY,
+    }),
+  });
+  const data = await response.json() as Record<string, any>;
+  if (!response.ok || !data.access_token) {
+    throw new Error(String(data.error_description || data.error || `百度令牌请求失败：${response.status}`));
+  }
+
+  cachedBaiduToken = String(data.access_token);
+  const expiresIn = Math.max(60, Number(data.expires_in) || 2592000);
+  cachedBaiduTokenExpiresAt = Date.now() + (expiresIn - 60) * 1000;
+  return cachedBaiduToken;
+};
+
+const recognizeFuelImage = async (request: Request, env: Env) => {
+  if (!hasFuelAccess(request, env)) return json(request, env, { error: '油耗访问密钥无效' }, 401);
+  if (!env.BAIDU_API_KEY || !env.BAIDU_SECRET_KEY) {
+    return json(request, env, { error: 'Worker 未配置 BAIDU_API_KEY 或 BAIDU_SECRET_KEY' }, 500);
+  }
+
+  const body = await readJsonBody(request);
+  const image = typeof body?.image === 'string' ? body.image : '';
+  if (!image) return json(request, env, { error: '缺少 OCR 图片数据' }, 400);
+  if (new TextEncoder().encode(image).byteLength > MAX_OCR_IMAGE_BYTES) {
+    return json(request, env, { error: 'OCR 图片超过 8MB 限制' }, 413);
+  }
+
+  try {
+    const token = await getBaiduOcrToken(env);
+    const response = await fetch(BAIDU_OCR_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        access_token: token,
+        image,
+        language_type: 'CHN_ENG',
+        detect_direction: 'true',
+      }),
+    });
+    const data = await response.json() as JsonBody;
+    if (!response.ok) {
+      console.error('Baidu OCR request failed', response.status, data);
+      return json(request, env, { error: `百度 OCR 请求失败：${response.status}` }, response.status);
+    }
+    return json(request, env, data);
+  } catch (error) {
+    console.error('Fuel OCR failed', error);
+    return json(request, env, { error: error instanceof Error ? error.message : 'OCR 服务异常' }, 500);
+  }
+};
+
 async function synthesize(request: Request, env: Env) {
   if (!env.DASHSCOPE_API_KEY) {
     return json(request, env, { error: 'Worker 未配置百炼 API Key' }, 500);
@@ -319,7 +511,7 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === 'GET' && url.pathname === '/health') {
-      return json(request, env, { ok: true, service: 'sanqiu-toolbox-api', story: 'chat-completions', tts: 'qwen-tts-vc', image: 'remove.bg' });
+      return json(request, env, { ok: true, service: 'sanqiu-toolbox-api', story: 'chat-completions', tts: 'qwen-tts-vc', image: 'remove.bg', fuel: 'r2+baidu-ocr' });
     }
 
     if (request.method === 'POST' && url.pathname === '/api/story/generate') {
@@ -332,6 +524,18 @@ export default {
 
     if (request.method === 'POST' && url.pathname === '/api/image/remove-bg') {
       return removeImageBackground(request, env);
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/fuel/records') {
+      return readFuelRecords(request, env);
+    }
+
+    if (request.method === 'PUT' && url.pathname === '/api/fuel/records') {
+      return writeFuelRecords(request, env);
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/fuel/ocr') {
+      return recognizeFuelImage(request, env);
     }
 
     return json(request, env, { error: 'Not found' }, 404);

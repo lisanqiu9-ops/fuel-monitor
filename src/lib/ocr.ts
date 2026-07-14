@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { normalizeFuelType } from '../data';
+import { callCloudFuelOcr, hasFuelCloudKey } from './fuelCloud';
 
 export async function compressImage(file: File, maxWidth = 1600, quality = 0.85): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -29,33 +30,11 @@ export async function compressImage(file: File, maxWidth = 1600, quality = 0.85)
 }
 
 export async function checkOcrConfig() {
-  const workerUrl = localStorage.getItem('cf_worker_url');
-  return !!workerUrl;
+  return hasFuelCloudKey();
 }
 
 export async function callBaiduOCR(base64Image: string) {
-  const workerUrl = localStorage.getItem('cf_worker_url');
-  const accessToken = localStorage.getItem('ocr_access_token');
-
-  if (!workerUrl) {
-    throw new Error('未配置 OCR Worker URL，请前往设置页配置');
-  }
-
-  const ocrResp = await fetch(workerUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: JSON.stringify({
-      action: 'ocr',
-      image: base64Image,
-    })
-  });
-
-  if (!ocrResp.ok) throw new Error(`OCR请求失败: ${ocrResp.status}`);
-
-  const ocrData = await ocrResp.json();
+  const ocrData = await callCloudFuelOcr(base64Image);
   if (ocrData.error_code) {
     throw new Error(`识别失败[${ocrData.error_code}]: ${ocrData.error_msg}`);
   }

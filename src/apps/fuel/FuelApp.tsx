@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { loadInitialData, saveRecords } from '../../data';
 import { FuelRecord } from '../../types';
 import { OverviewTab } from '../../components/OverviewTab';
@@ -13,13 +13,21 @@ import { Droplet, BarChart2, PlusCircle, Settings, ClipboardList, PackageOpen } 
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { checkOcrConfig } from '../../lib/ocr';
+import {
+  clearFuelCloudKey,
+  configureFuelCloudFromUrl,
+  configureFuelCloudKey,
+  getFuelCloudKey,
+  hasFuelCloudKey,
+  loadCloudFuelRecords,
+  saveCloudFuelRecords,
+} from '../../lib/fuelCloud';
 
 const tabMeta = {
   overview: { title: '概览', subtitle: '油耗监控' },
-  trend: { title: '趋势', subtitle: '油耗监控' },
-  report: { title: '分析', subtitle: '用车成本报告' },
+  analysis: { title: '分析', subtitle: '油耗监控' },
   add: { title: '记录加油', subtitle: '油耗监控' },
-  settings: { title: '我的', subtitle: '油耗监控' },
+  settings: { title: '设置', subtitle: '油耗监控' },
 } as const;
 
 const themeOptions = [
@@ -28,6 +36,9 @@ const themeOptions = [
 ] as const;
 
 type ThemeId = typeof themeOptions[number]['id'];
+type CloudState = { type: 'idle' | 'syncing' | 'success' | 'error'; msg: string };
+type ActiveTab = keyof typeof tabMeta;
+type AnalysisMode = 'trend' | 'report';
 
 interface FuelAppProps {
   onBackToToolbox?: () => void;
@@ -35,7 +46,8 @@ interface FuelAppProps {
 
 export default function App({ onBackToToolbox }: FuelAppProps) {
   const [records, setRecords] = useState<FuelRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'trend' | 'report' | 'add' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('trend');
   const [showHistory, setShowHistory] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<FuelRecord | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -44,14 +56,49 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
   const [ocrLaunchRequest, setOcrLaunchRequest] = useState(0);
   const [ocrPrefillRequest, setOcrPrefillRequest] = useState(0);
   const [ocrPrefillData, setOcrPrefillData] = useState<any>(null);
+  const [cloudConfigured, setCloudConfigured] = useState(false);
+  const [cloudState, setCloudState] = useState<CloudState>({ type: 'idle', msg: '尚未连接云端' });
+  const cloudSyncQueue = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
-    setRecords(saveRecords(loadInitialData()));
+    let active = true;
+    const localRecords = saveRecords(loadInitialData());
+    setRecords(localRecords);
     const savedTheme = localStorage.getItem('fuel_monitor_theme') as ThemeId | null;
     if (savedTheme && themeOptions.some(option => option.id === savedTheme)) {
       setTheme(savedTheme);
     }
-    setIsLoaded(true);
+
+    const cloudReady = configureFuelCloudFromUrl();
+    setCloudConfigured(cloudReady);
+    if (!cloudReady) {
+      setIsLoaded(true);
+      return () => { active = false; };
+    }
+
+    setCloudState({ type: 'syncing', msg: '正在读取云端记录' });
+    loadCloudFuelRecords()
+      .then(async cloudRecords => {
+        if (cloudRecords === null) {
+          await saveCloudFuelRecords(localRecords);
+          if (active) setCloudState({ type: 'success', msg: `已迁移 ${localRecords.length} 条本地记录到云端` });
+          return;
+        }
+        const nextRecords = saveRecords(cloudRecords as FuelRecord[]);
+        if (active) {
+          setRecords(nextRecords);
+          setCloudState({ type: 'success', msg: `已同步 ${nextRecords.length} 条云端记录` });
+        }
+      })
+      .catch(error => {
+        console.error('Failed to initialize fuel cloud data', error);
+        if (active) setCloudState({ type: 'error', msg: error instanceof Error ? error.message : '云端同步失败' });
+      })
+      .finally(() => {
+        if (active) setIsLoaded(true);
+      });
+
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -80,19 +127,63 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
     };
   }, []);
 
+  const syncRecordsToCloud = (nextRecords: FuelRecord[]) => {
+    if (!hasFuelCloudKey()) return;
+    setCloudState({ type: 'syncing', msg: '正在同步云端记录' });
+    cloudSyncQueue.current = cloudSyncQueue.current
+      .catch(() => undefined)
+      .then(() => saveCloudFuelRecords(nextRecords))
+      .then(() => setCloudState({ type: 'success', msg: `已同步 ${nextRecords.length} 条记录` }))
+      .catch(error => {
+        console.error('Failed to sync fuel records', error);
+        setCloudState({ type: 'error', msg: error instanceof Error ? error.message : '云端同步失败' });
+      });
+  };
+
+  const persistRecords = (nextRecords: FuelRecord[]) => {
+    const savedRecords = saveRecords(nextRecords);
+    setRecords(savedRecords);
+    syncRecordsToCloud(savedRecords);
+    return savedRecords;
+  };
+
   const handleSave = (newRecord: FuelRecord) => {
-    const newRecords = [...records, newRecord];
-    setRecords(saveRecords(newRecords));
+    persistRecords([...records, newRecord]);
     setActiveTab('overview');
   };
 
   const handleDelete = (id: string) => {
-    setRecords(prevRecords => saveRecords(prevRecords.filter(record => record.id !== id)));
+    persistRecords(records.filter(record => record.id !== id));
     setSelectedRecord(prevRecord => prevRecord?.id === id ? null : prevRecord);
   };
 
   const handleReplaceRecords = (nextRecords: FuelRecord[]) => {
-    setRecords(saveRecords(nextRecords));
+    persistRecords(nextRecords);
+  };
+
+  const connectCloud = async (key: string) => {
+    const previousKey = getFuelCloudKey();
+    configureFuelCloudKey(key);
+    setCloudConfigured(true);
+    setCloudState({ type: 'syncing', msg: '正在连接油耗云端服务' });
+    try {
+      const cloudRecords = await loadCloudFuelRecords();
+      if (cloudRecords === null) {
+        await saveCloudFuelRecords(records);
+        setCloudState({ type: 'success', msg: `已迁移 ${records.length} 条本地记录到云端` });
+        return;
+      }
+      const nextRecords = saveRecords(cloudRecords as FuelRecord[]);
+      setRecords(nextRecords);
+      setCloudState({ type: 'success', msg: `已同步 ${nextRecords.length} 条云端记录` });
+    } catch (error) {
+      console.error('Failed to connect fuel cloud service', error);
+      if (previousKey) configureFuelCloudKey(previousKey);
+      else clearFuelCloudKey();
+      setCloudConfigured(Boolean(previousKey));
+      setCloudState({ type: 'error', msg: error instanceof Error ? error.message : '云端连接失败' });
+      throw error;
+    }
   };
 
   const handleGoRecognize = async () => {
@@ -109,6 +200,11 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
     setOcrPrefillRequest(prev => prev + 1);
     setShowOcrCapture(false);
     setActiveTab('add');
+  };
+
+  const openTrendAnalysis = () => {
+    setAnalysisMode('trend');
+    setActiveTab('analysis');
   };
 
   const currentTab = tabMeta[activeTab];
@@ -143,17 +239,36 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
         <AnimatePresence mode="wait">
           {activeTab === 'overview' && (
             <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <OverviewTab records={records} onRecordClick={setSelectedRecord} onGoRecognize={handleGoRecognize} onGoTrend={() => setActiveTab('trend')} onOpenHistory={() => setShowHistory(true)} />
+              <OverviewTab records={records} onRecordClick={setSelectedRecord} onGoRecognize={handleGoRecognize} onGoTrend={openTrendAnalysis} onOpenHistory={() => setShowHistory(true)} />
             </motion.div>
           )}
-          {activeTab === 'trend' && (
-            <motion.div key="trend" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <TrendTab records={records} />
-            </motion.div>
-          )}
-          {activeTab === 'report' && (
-            <motion.div key="report" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <AnalysisReportTab records={records} />
+          {activeTab === 'analysis' && (
+            <motion.div key="analysis" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+              <div className="px-4 pt-1">
+                <div role="tablist" aria-label="分析内容" className="grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-[#0d0f14] p-1">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={analysisMode === 'trend'}
+                    onClick={() => setAnalysisMode('trend')}
+                    className={cn('flex min-h-10 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors', analysisMode === 'trend' ? 'bg-[#f5a623] text-black' : 'text-[#6b7a99]')}
+                  >
+                    <BarChart2 size={17} />
+                    趋势
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={analysisMode === 'report'}
+                    onClick={() => setAnalysisMode('report')}
+                    className={cn('flex min-h-10 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors', analysisMode === 'report' ? 'bg-[#f5a623] text-black' : 'text-[#6b7a99]')}
+                  >
+                    <ClipboardList size={17} />
+                    周期报告
+                  </button>
+                </div>
+              </div>
+              {analysisMode === 'trend' ? <TrendTab records={records} /> : <AnalysisReportTab records={records} />}
             </motion.div>
           )}
           {activeTab === 'add' && (
@@ -163,48 +278,50 @@ export default function App({ onBackToToolbox }: FuelAppProps) {
           )}
           {activeTab === 'settings' && (
             <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              <SettingsTab records={records} onRecordsChange={handleReplaceRecords} onBackToToolbox={onBackToToolbox} theme={theme} themeOptions={themeOptions} onThemeChange={setTheme} />
+              <SettingsTab records={records} onRecordsChange={handleReplaceRecords} onBackToToolbox={onBackToToolbox} theme={theme} themeOptions={themeOptions} onThemeChange={setTheme} cloudConfigured={cloudConfigured} cloudState={cloudState} onConnectCloud={connectCloud} />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
       {/* Tab Bar */}
-      <div className="app-bottom-nav fixed bottom-0 left-1/2 bg-[#1a1a18]/95 backdrop-blur-xl border-t border-white/5 flex items-start justify-around z-40 pb-safe">
+      <div
+        className="app-bottom-nav fixed bottom-0 left-1/2 z-40 grid grid-cols-4 items-stretch border-t border-white/5 bg-[#1a1a18]/95 backdrop-blur-xl"
+        style={{
+          bottom: 0,
+          width: 'min(100vw, 28rem)',
+          height: 'calc(68px + env(safe-area-inset-bottom, 0px))',
+          borderRadius: 0,
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
+      >
         <button 
           onClick={() => setActiveTab('overview')}
-          className={cn("app-nav-item flex flex-col items-center justify-start w-full h-full relative transition-colors", activeTab === 'overview' ? 'text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
+          className={cn("app-nav-item relative m-1 flex min-h-14 flex-col items-center justify-start rounded-2xl transition-colors", activeTab === 'overview' ? 'bg-[#f5a623]/10 text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
         >
           <Droplet size={23} />
           <span className="text-[11px] mt-0.5 font-medium">概览</span>
         </button>
         <button 
-          onClick={() => setActiveTab('trend')}
-          className={cn("app-nav-item flex flex-col items-center justify-start w-full h-full relative transition-colors", activeTab === 'trend' ? 'text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
+          onClick={() => setActiveTab('add')}
+          className={cn("app-nav-item relative m-1 flex min-h-14 flex-col items-center justify-start rounded-2xl transition-colors", activeTab === 'add' ? 'bg-[#f5a623]/10 text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
         >
-          <BarChart2 size={23} />
-          <span className="text-[11px] mt-0.5 font-medium">趋势</span>
+          <PlusCircle size={23} />
+          <span className="text-[11px] mt-0.5 font-medium">记录</span>
         </button>
         <button
-          onClick={() => setActiveTab('report')}
-          className={cn("app-nav-item flex flex-col items-center justify-start w-full h-full relative transition-colors", activeTab === 'report' ? 'text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
+          onClick={() => setActiveTab('analysis')}
+          className={cn("app-nav-item relative m-1 flex min-h-14 flex-col items-center justify-start rounded-2xl transition-colors", activeTab === 'analysis' ? 'bg-[#f5a623]/10 text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
         >
-          <ClipboardList size={23} />
+          <BarChart2 size={23} />
           <span className="text-[11px] mt-0.5 font-medium">分析</span>
         </button>
         <button 
-          onClick={() => setActiveTab('add')}
-          className={cn("app-nav-item flex flex-col items-center justify-start w-full h-full relative transition-colors", activeTab === 'add' ? 'text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
-        >
-          <PlusCircle size={25} />
-          <span className="text-[11px] mt-0.5 font-medium">记录</span>
-        </button>
-        <button 
           onClick={() => setActiveTab('settings')}
-          className={cn("app-nav-item flex flex-col items-center justify-start w-full h-full relative transition-colors", activeTab === 'settings' ? 'text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
+          className={cn("app-nav-item relative m-1 flex min-h-14 flex-col items-center justify-start rounded-2xl transition-colors", activeTab === 'settings' ? 'bg-[#f5a623]/10 text-[#f5a623] tab-active' : 'text-[#6b7a99] hover:text-[#e8ecf4]')}
         >
           <Settings size={23} />
-          <span className="text-[11px] mt-0.5 font-medium">我的</span>
+          <span className="text-[11px] mt-0.5 font-medium">设置</span>
         </button>
       </div>
 

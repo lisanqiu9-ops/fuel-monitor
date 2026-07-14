@@ -1,0 +1,10 @@
+name = "sanqiu-toolbox-api"
+main = "src/index.ts"
+compatibility_date = "2026-06-16"
+
+[vars]
+CORS_ALLOWED_ORIGIN = "https://liwu.dpdns.org,https://lisanqiu9-ops.github.io,https://sanqiu-toolbox.pages.dev"
+
+[[r2_buckets]]
+binding = "FUEL_BUCKET"
+bucket_name = "sanqiu-fuel-data"

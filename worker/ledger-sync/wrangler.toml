@@ -1,0 +1,11 @@
+name = "sanqiu-ledger-sync"
+main = "src/index.ts"
+compatibility_date = "2026-07-13"
+account_id = "320a905eaa1d951c5bd9e6dc8dc99ca0"
+
+[[r2_buckets]]
+binding = "LEDGER_BUCKET"
+bucket_name = "sanqiu-ledger-data"
+
+[vars]
+CORS_ALLOWED_ORIGIN = "https://liwu.dpdns.org"

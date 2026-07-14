@@ -1,7 +1,7 @@
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { LedgerRecord } from './ledgerTypes';
-import { isPending, recordDateTime } from './ledgerStats';
+import { isPending, isUnconfirmed, recordDateTime } from './ledgerStats';
 import { LedgerTransactionCard } from './LedgerTransactionCard';
 
 export function LedgerTransactionsPage({ records }: { records: LedgerRecord[] }) {
@@ -13,7 +13,7 @@ export function LedgerTransactionsPage({ records }: { records: LedgerRecord[] })
   const categories = useMemo(() => [...new Set(records.map(record => record.category1).filter(Boolean))].sort(), [records]);
   const filtered = useMemo(() => records.filter(record => {
     const search = (record.merchant + ' ' + record.account + ' ' + record.payMethod + ' ' + record.orderNo + ' ' + record.category1).toLowerCase();
-    const pending = [record.category1, record.merchant, record.account].some(isPending);
+    const pending = [record.category1, record.merchant, record.account].some(isPending) || isUnconfirmed(record);
     return (month === 'all' || record.date.startsWith(month)) && (category === 'all' || record.category1 === category) && (!pendingOnly || pending) && (!query.trim() || search.includes(query.trim().toLowerCase()));
   }).sort((a, b) => recordDateTime(b) - recordDateTime(a)), [records, month, category, pendingOnly, query]);
   return <div className="space-y-4">

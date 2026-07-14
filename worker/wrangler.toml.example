@@ -1,4 +1,4 @@
-name = "baby-story-worker"
+name = "sanqiu-toolbox-api"
 main = "src/index.ts"
 compatibility_date = "2026-06-16"
 
@@ -8,7 +8,7 @@ DEEPSEEK_STORY_MODEL = "deepseek-chat"
 STORY_PROVIDER = "dashscope"
 STORY_TEMPERATURE = "0.75"
 DASHSCOPE_TTS_MODEL = "qwen3-tts-vc-2026-01-22"
-CORS_ALLOWED_ORIGIN = "https://lisanqiu9-ops.github.io"
+CORS_ALLOWED_ORIGIN = "https://liwu.dpdns.org,https://lisanqiu9-ops.github.io,https://sanqiu-toolbox.pages.dev"
 # Optional non-secret JSON map. Prefer Secrets if you treat voice IDs as sensitive.
 # BAILIAN_VOICE_MAP = "{\"papa\":\"qwen-tts-vc-bailian-voice-your-papa\",\"mama\":\"qwen-tts-vc-bailian-voice-your-mama\"}"
 
@@ -17,7 +17,14 @@ CORS_ALLOWED_ORIGIN = "https://lisanqiu9-ops.github.io"
 # wrangler secret put DEEPSEEK_API_KEY
 # wrangler secret put DASHSCOPE_TTS_VOICE_PAPA
 # wrangler secret put DASHSCOPE_TTS_VOICE_MAMA
+# wrangler secret put BAIDU_API_KEY
+# wrangler secret put BAIDU_SECRET_KEY
+# wrangler secret put FUEL_ACCESS_KEY
 #
 # Legacy aliases are still supported by the Worker:
 # wrangler secret put BAILIAN_VOICE_PAPA
 # wrangler secret put BAILIAN_VOICE_MAMA
+
+[[r2_buckets]]
+binding = "FUEL_BUCKET"
+bucket_name = "sanqiu-fuel-data"

@@ -1,6 +1,6 @@
-# Baby Story Cloudflare Worker
+# Sanqiu Toolbox Cloudflare Worker
 
-This Worker is the server-side proxy for the prenatal story assistant. For the Cloudflare dashboard online editor, paste `worker/src/dashboard-worker.js`; for Wrangler/source control, use `worker/src/index.ts`. The frontend only stores the Worker Base URL, enable switches, and safe voice keys such as `papa` or `mama`. Story provider, model, temperature, and API keys live in Cloudflare Worker configuration. DashScope/Bailian and DeepSeek API keys stay in Cloudflare Worker Secrets and never enter frontend code, localStorage, IndexedDB, or the GitHub Pages build.
+This Worker is the server-side API for the toolbox. Deploy `worker/src/index.ts` with Wrangler when using the combined story, image-removal, fuel-sync, and fuel-OCR service. Provider API keys stay in Cloudflare Worker Secrets and never enter frontend code, localStorage, IndexedDB, or the GitHub Pages build.
 
 The Worker currently supports:
 
@@ -8,6 +8,8 @@ The Worker currently supports:
   - DashScope/Bailian Qwen: `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions`
   - DeepSeek: `https://api.deepseek.com/chat/completions`
 - Qwen-TTS voice synthesis through DashScope.
+- Fuel records stored in Cloudflare R2.
+- Fuel receipt OCR through Baidu OCR.
 
 ## Cloudflare Variables
 
@@ -20,7 +22,11 @@ Plaintext variables:
 - `STORY_PROVIDER`: default `dashscope`; optional fallback when the frontend does not send `provider`
 - `STORY_TEMPERATURE`: default `0.75`
 - `DASHSCOPE_TTS_MODEL`: `qwen3-tts-vc-2026-01-22`
-- `CORS_ALLOWED_ORIGIN`: your GitHub Pages origin, for example `https://lisanqiu9-ops.github.io`
+- `CORS_ALLOWED_ORIGIN`: comma-separated frontend origins, for example `https://liwu.dpdns.org,https://lisanqiu9-ops.github.io,https://sanqiu-toolbox.pages.dev`
+
+R2 binding:
+
+- `FUEL_BUCKET`: bind this to the `sanqiu-fuel-data` bucket.
 
 Secrets:
 
@@ -28,6 +34,9 @@ Secrets:
 - `DEEPSEEK_API_KEY`: DeepSeek API key. Optional; only required when using DeepSeek.
 - `DASHSCOPE_TTS_VOICE_PAPA`: Authorized Qwen voice value for the `papa` voice.
 - `DASHSCOPE_TTS_VOICE_MAMA`: Authorized Qwen voice value for the `mama` voice.
+- `BAIDU_API_KEY`: Baidu OCR API key.
+- `BAIDU_SECRET_KEY`: Baidu OCR secret key.
+- `FUEL_ACCESS_KEY`: private bearer key used by fuel record sync and OCR requests.
 
 Legacy aliases are also supported for compatibility:
 
@@ -37,6 +46,12 @@ Legacy aliases are also supported for compatibility:
 The voice value should look like `qwen-tts-vc-bailian-voice-...`; it is the value sent as `input.voice` to DashScope.
 
 ## Endpoints
+
+Fuel endpoints require `Authorization: Bearer <FUEL_ACCESS_KEY>`:
+
+- `GET /api/fuel/records`: read `fuel-records.json` from R2.
+- `PUT /api/fuel/records`: validate and replace the R2 record set.
+- `POST /api/fuel/ocr`: recognize a base64-encoded fuel receipt or dashboard image.
 
 ### GET /health
 

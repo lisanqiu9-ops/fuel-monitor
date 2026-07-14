@@ -73,10 +73,10 @@ function ToolboxHome() {
       const raw = localStorage.getItem('fuellog_records');
       const parsed = raw ? JSON.parse(raw) : [];
       const count = Array.isArray(parsed) ? parsed.length : Array.isArray(parsed?.records) ? parsed.records.length : 0;
-      const ocrReady = Boolean(localStorage.getItem('cf_worker_url')?.trim());
-      return `${count} 条记录 · OCR ${ocrReady ? '已配置' : '未配置'}`;
+      const cloudReady = Boolean(localStorage.getItem('sanqiu-fuel-access-key')?.trim());
+      return `${count} 条记录 · 云端${cloudReady ? '已连接' : '未连接'}`;
     } catch {
-      return '本地记录 · OCR 待检查';
+      return '本地记录 · 云端待检查';
     }
   }, []);
 
