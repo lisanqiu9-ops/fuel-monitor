@@ -57,6 +57,7 @@ export function TrendTab({ records }: Props) {
   const avgFuel = validFuel.length > 0
     ? validFuel.reduce((sum, r) => sum + (r.actualFuelPer100 ?? 0), 0) / validFuel.length
     : null;
+  const latestValidFuel = validFuel.length > 0 ? validFuel[validFuel.length - 1].actualFuelPer100 : null;
   const validCost = enriched.filter(r => r.costPerKm !== null);
   const avgCostPerKm = validCost.length > 0
     ? validCost.reduce((sum, r) => sum + (r.costPerKm ?? 0), 0) / validCost.length
@@ -96,8 +97,8 @@ export function TrendTab({ records }: Props) {
         <div className="insight-card">
           <div className="insight-icon"><Zap size={17} /></div>
           <div>
-            <span>每公里油耗</span>
-            <strong>{latest.fuelPerKm !== null ? latest.fuelPerKm.toFixed(4) : '--'} <small>L/km</small></strong>
+            <span>最近实际油耗</span>
+            <strong>{latestValidFuel !== null ? latestValidFuel.toFixed(2) : '--'} <small>L/100km</small></strong>
           </div>
         </div>
       </section>
