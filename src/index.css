@@ -2634,7 +2634,7 @@ body {
 .report-picker-layer {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 100;
   pointer-events: none;
 }
 
@@ -2652,6 +2652,7 @@ body {
   left: 50%;
   bottom: 0;
   width: min(100vw, 28rem);
+  max-height: calc(100dvh - max(18px, env(safe-area-inset-top, 0px)));
   border: 1px solid var(--app-border);
   border-radius: 24px 24px 0 0;
   background: var(--app-card);
@@ -2659,6 +2660,13 @@ body {
   padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   pointer-events: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-shell[data-theme="collectui"] .report-picker-sheet {
+  background: #fbfaf7;
 }
 
 .report-picker-head {

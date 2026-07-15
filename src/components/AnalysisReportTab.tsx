@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Area,
   AreaChart,
@@ -83,6 +84,9 @@ export function AnalysisReportTab({ records }: Props) {
         : `较${format(previousMonth, 'M月')}上升 ${fuelDiff.toFixed(2)} L/100km，建议关注`;
   const toolbarLabel = period === 'month' ? monthLabel : report.periodLabel;
   const scopeLabel = period === 'month' ? '按月统计' : '区间统计';
+  const pickerPortalTarget = typeof document !== 'undefined'
+    ? document.querySelector('.app-shell')
+    : null;
   const earliestYear = useMemo(() => Math.min(
     now.getFullYear(),
     ...records.map(record => Number(record.date.slice(0, 4))).filter(Number.isFinite),
@@ -218,7 +222,7 @@ export function AnalysisReportTab({ records }: Props) {
         </section>
       )}
 
-      {pickerOpen && (
+      {pickerOpen && pickerPortalTarget && createPortal((
         <div className="report-picker-layer" role="presentation">
           <button type="button" className="report-picker-backdrop" aria-label="关闭时间范围选择" onClick={() => setPickerOpen(false)} />
           <section className="report-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="report-picker-title">
@@ -283,7 +287,7 @@ export function AnalysisReportTab({ records }: Props) {
             <p>月度数据按加油日期归属；跨月油耗周期会计入加油记录所在月份。</p>
           </section>
         </div>
-      )}
+      ), pickerPortalTarget)}
 
       <section className="report-detail-heading">
         <span>详细数据</span>
