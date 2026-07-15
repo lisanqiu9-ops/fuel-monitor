@@ -199,7 +199,9 @@ export const generateFuelAnalysisReport = (
   period: ReportPeriod,
   now = new Date(),
 ): FuelAnalysisReport => {
-  const periodLabel = reportPeriodOptions.find(option => option.id === period)?.label ?? '周期';
+  const periodLabel = period === 'month'
+    ? format(now, 'yyyy年M月')
+    : reportPeriodOptions.find(option => option.id === period)?.label ?? '周期';
   const records = filterFuelRecordsByPeriod(allRecords, period, now);
   const stats = buildStats(records);
   const anomalies = buildAnomalies(records, stats);
